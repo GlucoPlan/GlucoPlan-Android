@@ -260,7 +260,7 @@ fun SettingsScreen(
             ListItem(
                 headlineContent = { Text("GitHub") },
                 trailingContent = { Icon(Icons.Default.OpenInNew, null, Modifier.size(18.dp)) },
-                modifier = Modifier.clickable { uriHandler.openUri("https://github.com/GlucoPlan/GlucoPlan") }
+                modifier = Modifier.clickable { uriHandler.openUri("https://github.com/GlucoPlan/GlucoPlan-Android") }
             )
             ListItem(
                 headlineContent = { Text("Telegram-канал") },
