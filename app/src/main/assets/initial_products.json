@@ -52,6 +52,5 @@
   {"name": "Сосиски молочные", "calories": 266, "proteins": 11.0, "fats": 23.9, "carbs": 2.0, "glycemic_index": 34},
   {"name": "Квас", "calories": 27, "proteins": 0.2, "fats": 0.0, "carbs": 6.2, "glycemic_index": 30},
   {"name": "Компот из яблок", "calories": 58, "proteins": 0.1, "fats": 0.0, "carbs": 14.5, "glycemic_index": 38},
-  {"name": "Пельмени", "calories": 224, "proteins": 8.2, "fats": 10.2, "carbs": 26.5, "glycemic_index": 55},
-  {"name": "Голубцы с рисом", "calories": 130, "proteins": 7.0, "fats": 7.0, "carbs": 10.0, "glycemic_index": 50}
+  {"name": "Пельмени", "calories": 224, "proteins": 8.2, "fats": 10.2, "carbs": 26.5, "glycemic_index": 55}
 ]
