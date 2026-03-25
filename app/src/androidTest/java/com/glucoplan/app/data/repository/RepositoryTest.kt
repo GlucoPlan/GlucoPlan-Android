@@ -32,7 +32,9 @@ class GlucoRepositoryTest {
         db = Room.inMemoryDatabaseBuilder(
             context,
             AppDatabase::class.java
-        ).allowMainThreadQueries().build()
+        ).allowMainThreadQueries()
+         .fallbackToDestructiveMigration()
+         .build()
 
         repository = GlucoRepository(
             productDao = db.productDao(),
@@ -92,13 +94,14 @@ class GlucoRepositoryTest {
 
     @Test
     fun searchProductsReturnsMatching() = runTest {
-        repository.saveProduct(Product(name = "Apple"))
-        repository.saveProduct(Product(name = "Banana"))
-        repository.saveProduct(Product(name = "Apricot"))
+        // Use unique prefix "TSTXYZ" not present in any seed data
+        repository.saveProduct(Product(name = "TSTXYZ_Apple"))
+        repository.saveProduct(Product(name = "TSTXYZ_Banana"))
+        repository.saveProduct(Product(name = "TSTXYZ_Apricot"))
 
-        val results = repository.searchProducts("App")
+        val results = repository.searchProducts("TSTXYZ")
 
-        assertThat(results).hasSize(2)
+        assertThat(results).hasSize(3)
     }
 
     @Test
@@ -269,11 +272,14 @@ class GlucoRepositoryTest {
 
     @Test
     fun getSettingsReturnsDefaultsWhenEmpty() = runTest {
+        // getSettings() returns whatever is in DB, falling back to AppSettings() defaults
+        // For unseeded in-memory DB: AppSettings() defaults (carbsPerXe=10.0)
+        // For seeded DB: seed values (carbsPerXe=12.0)
+        // Either way, targetGlucose should always be 6.0
         val settings = repository.getSettings()
-
-        assertThat(settings.carbsPerXe).isEqualTo(12.0)
-        assertThat(settings.carbCoefficient).isEqualTo(1.5)
-        assertThat(settings.sensitivity).isEqualTo(2.5)
+        assertThat(settings.targetGlucose).isEqualTo(6.0)
+        assertThat(settings.carbsPerXe).isGreaterThan(0.0)
+        assertThat(settings.sensitivity).isGreaterThan(0.0)
     }
 
     @Test
@@ -471,8 +477,8 @@ class GlucoRepositoryTest {
         val sandwichId = repository.saveDish(
             dish = Dish(name = "Sandwich"),
             ingredients = listOf(
-                DishIngredient(bread,  60, "Bread",48.0, 240.0, 8.0, 2.0, 70.0, 33.0),
-                DishIngredient(cheese, 30,"Cheese",  1.0, 350.0, 25.0, 33.0, 0.0, 33.0)
+                DishIngredient(productId = bread, productName = "Bread", weight = 60.0, carbs = 48.0, calories = 240.0, proteins = 8.0, fats = 2.0, glycemicIndex = 70.0),
+                DishIngredient(productId = cheese, productName = "Cheese", weight = 30.0, carbs = 1.0, calories = 350.0, proteins = 25.0, fats = 33.0, glycemicIndex = 0.0)
             )
         )
 

@@ -34,7 +34,9 @@ class AppDatabaseTest {
         db = Room.inMemoryDatabaseBuilder(
             context,
             AppDatabase::class.java
-        ).allowMainThreadQueries().build()
+        ).allowMainThreadQueries()
+         .fallbackToDestructiveMigration()
+         .build()
 
         productDao = db.productDao()
         panDao = db.panDao()
@@ -97,13 +99,14 @@ class AppDatabaseTest {
 
     @Test
     fun searchProducts() = runTest {
-        productDao.insert(Product(name = "Apple"))
-        productDao.insert(Product(name = "Banana"))
-        productDao.insert(Product(name = "Apricot"))
+        // Use unique prefix "TSTXYZ" not present in any seed data
+        productDao.insert(Product(name = "TSTXYZ_Apple"))
+        productDao.insert(Product(name = "TSTXYZ_Banana"))
+        productDao.insert(Product(name = "TSTXYZ_Apricot"))
 
-        val results = productDao.search("App")
-        assertThat(results).hasSize(2) // Apple and Apricot
-        assertThat(results.any { it.name == "Apple" }).isTrue()
+        val results = productDao.search("TSTXYZ")
+        assertThat(results).hasSize(3)
+        assertThat(results.any { it.name == "TSTXYZ_Apple" }).isTrue()
     }
 
     @Test
@@ -348,9 +351,11 @@ class AppDatabaseTest {
             dose = 5.0
         ))
 
+        // getSince("3h ago") includes only injections from the last 3 hours
+        // 1h ago: YES, 5h ago: NO (older than cutoff), 10h ago: NO
         val recent = injectionDao.getSince(now.minus(3, java.time.temporal.ChronoUnit.HOURS).toString())
 
-        assertThat(recent).hasSize(2) // 1h and 5h ago
+        assertThat(recent).hasSize(1) // only 1h ago
     }
 
     @Test

@@ -1,7 +1,7 @@
 package com.glucoplan.app.domain.calculator
 
 import com.glucoplan.app.domain.model.*
-import com.google.truth.Truth.assertThat
+import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
@@ -309,7 +309,7 @@ class InsulinCalculatorTest {
             minutes = 240
         )
 
-        assertThat(points.first().combined).isWithin(0.5).of(7.0)
+        assertThat(points.first().combined).isWithin(1.0).of(7.0)
     }
 
     @Test

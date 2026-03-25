@@ -52,7 +52,7 @@ class CalculatorViewModelTest {
     // ─── Initialization Tests ─────────────────────────────────────────────────────
 
     @Test
-    fun initial_state_has_empty_components() = runTest {
+    fun `initial state has empty components`() = runTest {
         val state = viewModel.state.value
 
         assertThat(state.components).isEmpty()
@@ -60,7 +60,7 @@ class CalculatorViewModelTest {
     }
 
     @Test
-    fun initial_state_loads_settings() = runTest {
+    fun `initial state loads settings`() = runTest {
         advanceUntilIdle()
 
         coVerify { repository.getSettings() }
@@ -70,7 +70,7 @@ class CalculatorViewModelTest {
     // ─── Component Management Tests ───────────────────────────────────────────────
 
     @Test
-    fun addProduct_adds_component_to_state() = runTest {
+    fun `addProduct adds component to state`() = runTest {
         val product = Product(
             id = 1,
             name = "Bread",
@@ -87,7 +87,7 @@ class CalculatorViewModelTest {
     }
 
     @Test
-    fun addDish_adds_component_to_state() = runTest {
+    fun `addDish adds component to state`() = runTest {
         val dish = DishWithIngredients(
             dish = Dish(id = 1, name = "Sandwich"),
             ingredients = listOf(
@@ -112,7 +112,7 @@ class CalculatorViewModelTest {
     }
 
     @Test
-    fun removeComponent_removes_from_state() = runTest {
+    fun `removeComponent removes from state`() = runTest {
         val product = Product(id = 1, name = "Test", carbs = 20.0)
         viewModel.addProduct(product, 100.0)
 
@@ -123,7 +123,7 @@ class CalculatorViewModelTest {
     }
 
     @Test
-    fun updateWeight_changes_serving_weight() = runTest {
+    fun `updateWeight changes serving weight`() = runTest {
         val product = Product(id = 1, name = "Test", carbs = 20.0)
         viewModel.addProduct(product, 100.0)
 
@@ -136,7 +136,7 @@ class CalculatorViewModelTest {
     }
 
     @Test
-    fun toggleAdjustment_changes_includedInAdjustment() = runTest {
+    fun `toggleAdjustment changes includedInAdjustment`() = runTest {
         val product = Product(id = 1, name = "Test", carbs = 20.0)
         viewModel.addProduct(product, 100.0)
 
@@ -150,7 +150,7 @@ class CalculatorViewModelTest {
     }
 
     @Test
-    fun clearAll_removes_all_components() = runTest {
+    fun `clearAll removes all components`() = runTest {
         viewModel.addProduct(Product(id = 1, name = "A"), 100.0)
         viewModel.addProduct(Product(id = 2, name = "B"), 100.0)
 
@@ -162,14 +162,14 @@ class CalculatorViewModelTest {
     // ─── Glucose Management Tests ─────────────────────────────────────────────────
 
     @Test
-    fun updateGlucose_changes_current_glucose() = runTest {
+    fun `updateGlucose changes current glucose`() = runTest {
         viewModel.updateGlucose(7.5)
 
         assertThat(viewModel.state.value.currentGlucose).isEqualTo(7.5)
     }
 
     @Test
-    fun updateCgmReading_sets_glucose_and_reading() = runTest {
+    fun `updateCgmReading sets glucose and reading`() = runTest {
         val reading = CgmReading(
             glucose = 8.2,
             direction = "SingleUp",
@@ -195,6 +195,7 @@ class CalculatorViewModelTest {
 
     @Test
     fun `foodDose calculated correctly`() = runTest {
+        advanceUntilIdle() // wait for settings to load
         viewModel.addProduct(Product(id = 1, name = "Test", carbs = 36.0), 100.0)
 
         // 36g / 12g per XE * 1.5 coefficient = 4.5 units
@@ -204,6 +205,7 @@ class CalculatorViewModelTest {
 
     @Test
     fun `correction calculated for high glucose`() = runTest {
+        advanceUntilIdle() // wait for settings to load
         viewModel.updateGlucose(11.0)
 
         // (11 - 6) / 2.5 = 2 units
@@ -220,6 +222,7 @@ class CalculatorViewModelTest {
 
     @Test
     fun `totalDose sums food and correction`() = runTest {
+        advanceUntilIdle() // wait for settings to load
         viewModel.addProduct(Product(id = 1, name = "Test", carbs = 24.0), 100.0) // 2 XE = 3 units
         viewModel.updateGlucose(8.5) // Correction: (8.5 - 6) / 2.5 = 1 unit
 
@@ -242,7 +245,7 @@ class CalculatorViewModelTest {
 
     @Test
     fun `rounding works correctly`() = runTest {
-        // Create situation that results in non-round number
+        advanceUntilIdle() // wait for settings to load
         viewModel.addProduct(Product(id = 1, name = "Test", carbs = 25.0), 100.0)
         // 25/12 * 1.5 = 3.125
 
@@ -263,6 +266,7 @@ class CalculatorViewModelTest {
 
     @Test
     fun `breadUnits calculated correctly`() = runTest {
+        advanceUntilIdle() // wait for settings to load
         viewModel.addProduct(Product(id = 1, name = "Test", carbs = 36.0), 100.0)
 
         // 36 / 12 = 3 XE

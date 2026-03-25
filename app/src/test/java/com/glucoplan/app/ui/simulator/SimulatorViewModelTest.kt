@@ -92,18 +92,41 @@ class SimulatorViewModelTest {
 
     @Test
     fun `simulation generates chart points`() = runTest {
+        // GI=60 = MEDIUM carb, GI=80 = FAST carb, GI=35 = SLOW carb
         viewModel.init(
             components = listOf(
                 CalcComponent(
                     type = ComponentType.PRODUCT,
                     sourceId = 1,
-                    name = "Test",
+                    name = "Fast food",
                     servingWeight = 100.0,
-                    carbsPer100g = 30.0,
-                    caloriesPer100g = 150.0,
+                    carbsPer100g = 20.0,
+                    caloriesPer100g = 100.0,
+                    proteinsPer100g = 0.0,
+                    fatsPer100g = 0.0,
+                    glycemicIndex = 80.0 // FAST
+                ),
+                CalcComponent(
+                    type = ComponentType.PRODUCT,
+                    sourceId = 2,
+                    name = "Medium food",
+                    servingWeight = 100.0,
+                    carbsPer100g = 20.0,
+                    caloriesPer100g = 100.0,
+                    proteinsPer100g = 0.0,
+                    fatsPer100g = 0.0,
+                    glycemicIndex = 55.0 // MEDIUM
+                ),
+                CalcComponent(
+                    type = ComponentType.PRODUCT,
+                    sourceId = 3,
+                    name = "Slow food",
+                    servingWeight = 100.0,
+                    carbsPer100g = 20.0,
+                    caloriesPer100g = 100.0,
                     proteinsPer100g = 5.0,
                     fatsPer100g = 2.0,
-                    glycemicIndex = 60.0
+                    glycemicIndex = 35.0 // SLOW
                 )
             ),
             insulin = 3.0,
@@ -116,6 +139,7 @@ class SimulatorViewModelTest {
 
         val state = viewModel.state.value
 
+        // All three carb types + insulin + combined should have points
         assertThat(state.fastCarbPoints).isNotEmpty()
         assertThat(state.mediumCarbPoints).isNotEmpty()
         assertThat(state.slowCarbPoints).isNotEmpty()
@@ -385,7 +409,7 @@ class SimulatorViewModelTest {
         val summary = viewModel.getSummaryText()
 
         assertThat(summary).contains("Симуляция")
-        assertThat(summary).contains("Сахар")
+        assertThat(summary).contains("Текущий сахар")
         assertThat(summary).contains("Углеводы")
         assertThat(summary).contains("Инсулин")
     }

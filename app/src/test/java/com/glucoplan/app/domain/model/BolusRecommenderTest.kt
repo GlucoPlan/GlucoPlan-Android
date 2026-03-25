@@ -1,6 +1,6 @@
 package com.glucoplan.app.domain.model
 
-import com.google.truth.Truth.assertThat
+import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
@@ -293,7 +293,7 @@ class BolusRecommenderTest {
         )
 
         assertThat(result.adjustments.any { it.category == AdjustmentCategory.PROTEIN }).isTrue()
-        assertThat(result.warnings.any { it.contains("белок") || it.contains("white") }).isTrue()
+        assertThat(result.warnings.any { it.contains("белк") }).isTrue()
     }
 
     @Test
@@ -311,7 +311,7 @@ class BolusRecommenderTest {
             settings = defaultSettings()
         )
 
-        assertThat(result.warnings.any { it.contains("жир") || it.contains("fat") }).isTrue()
+        assertThat(result.warnings.any { it.contains("жир") || it.contains("жиры") }).isTrue()
     }
 
     // ─── Confidence Levels ───────────────────────────────────────────────────────
