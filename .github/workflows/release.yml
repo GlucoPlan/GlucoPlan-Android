@@ -29,15 +29,29 @@ jobs:
       - name: Build release APK
         run: ./gradlew assembleRelease
 
+      - name: Decode keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/keystore.jks
+
+      - name: Find build-tools version
+        id: build_tools
+        run: |
+          BUILD_TOOLS=$(ls $ANDROID_SDK_ROOT/build-tools/ | sort -V | tail -1)
+          echo "version=$BUILD_TOOLS" >> $GITHUB_OUTPUT
+
       - name: Sign APK
-        uses: r0adkll/sign-android-release@v1.0.4
-        with:
-          releaseDirectory: app/build/outputs/apk/release
-          signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
-          alias: ${{ secrets.KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
-          buildToolsVersion: '36.1.0'
+        run: |
+          BT="${{ steps.build_tools.outputs.version }}"
+          $ANDROID_SDK_ROOT/build-tools/$BT/zipalign -v -p 4 \
+            app/build/outputs/apk/release/app-release-unsigned.apk \
+            app/build/outputs/apk/release/app-release-aligned.apk
+          $ANDROID_SDK_ROOT/build-tools/$BT/apksigner sign \
+            --ks app/keystore.jks \
+            --ks-key-alias ${{ secrets.KEY_ALIAS }} \
+            --ks-pass pass:${{ secrets.KEYSTORE_PASSWORD }} \
+            --key-pass pass:${{ secrets.KEY_PASSWORD }} \
+            --out app/build/outputs/apk/release/app-release-signed.apk \
+            app/build/outputs/apk/release/app-release-aligned.apk
 
       - name: Get version name
         id: version
@@ -53,4 +67,4 @@ jobs:
           name: "GlucoPlan ${{ steps.version.outputs.version }}"
           body: |
             Автоматическая сборка из коммита ${{ github.sha }}
-          files: app/build/outputs/apk/release/*.apk
+          files: app/build/outputs/apk/release/app-release-signed.apk
