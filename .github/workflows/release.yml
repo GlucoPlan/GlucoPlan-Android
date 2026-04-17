@@ -45,13 +45,13 @@ jobs:
         run: ./gradlew assembleRelease
 
       - name: Detect build-tools version
-        continue-on-error: true
+        continue-on-error: false
         run: |
           BUILD_TOOLS_VERSION=$(ls $ANDROID_SDK_ROOT/build-tools/ | sort -V | tail -1)
           echo "ANDROID_BUILD_TOOLS_VERSION=$BUILD_TOOLS_VERSION" >> $GITHUB_ENV
 
       - name: Sign APK
-        continue-on-error: true
+        continue-on-error: false
         uses: r0adkll/sign-android-release@v1
         with:
           releaseDirectory: app/build/outputs/apk/release
