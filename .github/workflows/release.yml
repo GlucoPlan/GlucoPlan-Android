@@ -3,6 +3,7 @@ name: Build & Release APK
 on:
   push:
     branches: [ main ]
+  workflow_dispatch:  # Для ручного запуска
 
 permissions:
   contents: write
@@ -29,7 +30,21 @@ jobs:
       - name: Decode keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/keystore.jks
-          file app/keystore.jks  # Проверка, что файл создан
+          echo "=== Keystore file info ==="
+          file app/keystore.jks
+          ls -la app/keystore.jks
+          
+      - name: Debug keystore (diagnostic)
+        run: |
+          echo "=== Testing keystore ==="
+          keytool -list -v -keystore app/keystore.jks -storepass "${{ secrets.KEYSTORE_PASSWORD }}" 2>&1 || echo "KEYSTORE TEST FAILED"
+          
+      - name: Debug base64 (first 100 chars)
+        run: |
+          echo "=== First 100 chars of KEYSTORE_BASE64 ==="
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | cut -c1-100
+          echo "..."
+          echo "Length: $(echo -n "${{ secrets.KEYSTORE_BASE64 }}" | wc -c)"
 
       - name: Build and sign APK
         run: ./gradlew assembleRelease
@@ -39,6 +54,7 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Verify APK signature
+        if: success()  # Только если сборка успешна
         run: |
           BUILD_TOOLS=$(ls $ANDROID_SDK_ROOT/build-tools/ | sort -V | tail -1)
           $ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS/apksigner verify \
@@ -46,12 +62,14 @@ jobs:
 
       - name: Get version name
         id: version
+        if: success()  # Только если сборка успешна
         run: |
           VERSION=$(grep 'versionName' app/build.gradle.kts | grep -oP '"\K[^"]+')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag=v$VERSION-$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
+        if: success()  # Только если сборка успешна
         uses: softprops/action-gh-release@v2.2.1
         with:
           tag_name: ${{ steps.version.outputs.tag }}
