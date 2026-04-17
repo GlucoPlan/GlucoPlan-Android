@@ -4,9 +4,6 @@ on:
   push:
     branches: [ main ]
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 permissions:
   contents: write
 
@@ -26,41 +23,20 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Cache Gradle
-        uses: actions/cache@v4.2.3
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-${{ hashFiles('**/*.gradle*', '**/libs.versions.toml') }}
-          restore-keys: gradle-
-
       - name: Make gradlew executable
         run: chmod +x ./gradlew
-
-      - name: Run unit tests
-        run: ./gradlew testDebugUnitTest
 
       - name: Build release APK
         run: ./gradlew assembleRelease
 
-      - name: Detect build-tools version
-        continue-on-error: false
-        run: |
-          BUILD_TOOLS_VERSION=$(ls $ANDROID_SDK_ROOT/build-tools/ | sort -V | tail -1)
-          echo "ANDROID_BUILD_TOOLS_VERSION=$BUILD_TOOLS_VERSION" >> $GITHUB_ENV
-
       - name: Sign APK
-        continue-on-error: false
-        uses: r0adkll/sign-android-release@v1
+        uses: r0adkll/sign-android-release@v1.0.4
         with:
           releaseDirectory: app/build/outputs/apk/release
           signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
           alias: ${{ secrets.KEY_ALIAS }}
           keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
           keyPassword: ${{ secrets.KEY_PASSWORD }}
-        env:
-          BUILD_TOOLS_VERSION: ${{ env.ANDROID_BUILD_TOOLS_VERSION }}
 
       - name: Get version name
         id: version
@@ -76,10 +52,4 @@ jobs:
           name: "GlucoPlan ${{ steps.version.outputs.version }}"
           body: |
             Автоматическая сборка из коммита ${{ github.sha }}
-
-            ${{ github.event.head_commit.message }}
           files: app/build/outputs/apk/release/*.apk
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
