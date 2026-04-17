@@ -27,6 +27,8 @@ import androidx.compose.material.icons.filled.NoFood
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -55,7 +57,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.glucoplan.app.domain.model.Product
-
+import androidx.compose.runtime.LaunchedEffect
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductsScreen(viewModel: ProductsViewModel = hiltViewModel()) {
@@ -63,6 +65,15 @@ fun ProductsScreen(viewModel: ProductsViewModel = hiltViewModel()) {
     val query by viewModel.query.collectAsStateWithLifecycle()
     val sortField by viewModel.sortField.collectAsStateWithLifecycle()
     val sortAsc by viewModel.sortAsc.collectAsStateWithLifecycle()
+    val saveError by viewModel.saveError.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(saveError) {
+        saveError?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearSaveError()
+        }
+    }
     val context = LocalContext.current
 
     var editProduct by remember { mutableStateOf<Product?>(null) }
@@ -75,6 +86,7 @@ fun ProductsScreen(viewModel: ProductsViewModel = hiltViewModel()) {
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Продукты") },

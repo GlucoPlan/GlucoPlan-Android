@@ -24,7 +24,17 @@ class GlucoRepository @Inject constructor(
     fun getProductsFlow(): Flow<List<Product>> = productDao.getAllFlow()
     suspend fun searchProducts(q: String) = if (q.isBlank()) productDao.getAll() else productDao.search(q)
     suspend fun getProduct(id: Long) = productDao.getById(id)
-    suspend fun saveProduct(p: Product) = if (p.id == 0L) productDao.insert(p) else { productDao.update(p); p.id }
+    suspend fun saveProduct(p: Product): Long {
+        if (p.id == 0L) {
+            // Проверяем дубликат по имени перед вставкой
+            val existing = productDao.getByName(p.name.trim())
+            if (existing != null) return existing.id  // возвращаем id существующего
+            return productDao.insert(p.copy(name = p.name.trim()))
+        } else {
+            productDao.update(p)
+            return p.id
+        }
+    }
     suspend fun deleteProduct(id: Long) = productDao.deleteById(id)
 
     // ─── Pans ────────────────────────────────────────────────────────────────

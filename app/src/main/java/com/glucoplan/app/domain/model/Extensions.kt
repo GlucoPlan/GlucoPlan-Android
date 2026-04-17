@@ -1,6 +1,5 @@
 package com.glucoplan.app.domain.model
 
-import com.glucoplan.app.data.repository.GlucoRepository
 
 /**
  * Extension to get glucose color based on range.
@@ -19,9 +18,4 @@ fun glucoseColor(glucose: Double, min: Double, max: Double): androidx.compose.ui
     }
 }
 
-/**
- * Repository extension — delegates to GlucoRepository.getRecentInjections().
- * Renamed to getRecentInjectionsExt to avoid hiding the member function.
- */
-suspend fun GlucoRepository.getRecentInjectionsExt(hours: Int): List<InsulinInjection> =
-    getRecentInjections(hours)
+// GlucoRepository.getRecentInjections(hours) is available directly — no extension needed

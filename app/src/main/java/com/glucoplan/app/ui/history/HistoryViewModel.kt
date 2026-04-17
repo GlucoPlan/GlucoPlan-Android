@@ -64,10 +64,17 @@ class HistoryViewModel @Inject constructor(
     suspend fun buildCalcComponents(mealId: Long): List<CalcComponent> {
         val rows = repo.getMealComponents(mealId)
         return rows.mapNotNull { row ->
-            if (row.componentType == "product" && row.productId != null) {
-                val p = repo.getProduct(row.productId) ?: return@mapNotNull null
-                CalcComponent.fromProduct(p, row.servingWeight)
-            } else null
+            when {
+                row.componentType == "product" && row.productId != null -> {
+                    val p = repo.getProduct(row.productId) ?: return@mapNotNull null
+                    CalcComponent.fromProduct(p, row.servingWeight)
+                }
+                row.componentType == "dish" && row.dishId != null -> {
+                    val d = repo.getDishWithIngredients(row.dishId) ?: return@mapNotNull null
+                    CalcComponent.fromDish(d, row.servingWeight)
+                }
+                else -> null
+            }
         }
     }
 }

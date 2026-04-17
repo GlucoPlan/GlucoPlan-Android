@@ -56,7 +56,7 @@ object InsulinCalculator {
 
         val ratio = targetCarbs / currentAdjustableCarbs
         return components.map { c ->
-            if (c.includedInAdjustment) c.copy(servingWeight = c.servingWeight * ratio) else c
+            if (c.includedInAdjustment) c.withWeight(c.servingWeight * ratio) else c
         }
     }
 }
@@ -72,7 +72,7 @@ data class SimPoint(
 
 object SimulatorCalculator {
 
-    val insulinProfiles = mutableMapOf(
+    val insulinProfiles = mapOf(
         "fiasp"     to mapOf("onset" to 3.0,  "tp" to 45.0, "td" to 270.0),
         "novorapid" to mapOf("onset" to 5.0,  "tp" to 65.0, "td" to 360.0),
         "humalog"   to mapOf("onset" to 5.0,  "tp" to 60.0, "td" to 300.0)

@@ -8,14 +8,14 @@ plugins {
 
 android {
     namespace = "com.glucoplan.app"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.glucoplan.app"
         minSdk = 29
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3        // было 2
+        versionName = "0.3.0"  // было 0.2.0
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -49,10 +49,12 @@ android {
     buildFeatures {
         compose = true
     }
+    buildToolsVersion = "36.1.0"
+    ndkVersion = "28.2.13676358"
 }
 
 dependencies {
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

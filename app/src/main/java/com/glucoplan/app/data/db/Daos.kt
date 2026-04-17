@@ -20,10 +20,10 @@ interface ProductDao {
     @Query("SELECT * FROM products WHERE id = :id")
     suspend fun getById(id: Long): Product?
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(product: Product): Long
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAll(products: List<Product>)
 
     @Update
@@ -34,6 +34,13 @@ interface ProductDao {
 
     @Query("DELETE FROM products WHERE id = :id")
     suspend fun deleteById(id: Long)
+
+    @Query("SELECT * FROM products WHERE name = :name LIMIT 1")
+    suspend fun getByName(name: String): Product?
+
+    // Удаляет дубликаты: оставляет запись с минимальным id
+    @Query("DELETE FROM products WHERE id NOT IN (SELECT MIN(id) FROM products GROUP BY name)")
+    suspend fun deleteDuplicates(): Int
 
     @Query("SELECT COUNT(*) FROM products")
     suspend fun count(): Int

@@ -56,7 +56,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.glucoplan.app.domain.model.Pan
-import kotlinx.coroutines.MainScope
+import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -69,6 +69,7 @@ fun PansScreen(
     val pans by viewModel.pans.collectAsStateWithLifecycle()
     var editPan by remember { mutableStateOf<Pan?>(null) }
     var showAdd by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) { viewModel.loadPans() }
 
@@ -122,7 +123,7 @@ fun PansScreen(
                                     Icon(Icons.Default.Edit, null)
                                 }
                                 IconButton(onClick = {
-                                    MainScope().launch {
+                                    scope.launch {
                                         pan.photoPath?.let { File(it).takeIf { f -> f.exists() }?.delete() }
                                         viewModel.deletePan(pan.id)
                                     }
@@ -143,7 +144,7 @@ fun PansScreen(
             pan = editPan,
             onDismiss = { showAdd = false; editPan = null },
             onSave = { pan ->
-                MainScope().launch {
+                scope.launch {
                     viewModel.savePan(pan)
                     viewModel.loadPans()
                     showAdd = false

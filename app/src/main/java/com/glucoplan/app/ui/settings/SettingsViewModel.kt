@@ -8,13 +8,13 @@ import com.glucoplan.app.data.repository.GlucoRepository
 import com.glucoplan.app.domain.model.AppSettings
 import com.glucoplan.app.domain.model.InsulinProfiles
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.Dispatchers
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -23,9 +23,17 @@ data class SettingsUiState(
     val loading: Boolean = true,
     val nsCheckResult: NsResult<Unit>? = null,
     val nsChecking: Boolean = false,
+    val nsSyncing: Boolean = false,
+    val nsSyncResult: NsSyncResult? = null,
     val insulinOptions: List<Pair<String, String>> = emptyList(),
     val basalOptions: List<Pair<String, String>> = emptyList()
 )
+
+sealed class NsSyncResult {
+    object UploadSuccess : NsSyncResult()
+    object DownloadSuccess : NsSyncResult()
+    data class Error(val message: String) : NsSyncResult()
+}
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
@@ -35,14 +43,12 @@ class SettingsViewModel @Inject constructor(
     private val _state = MutableStateFlow(SettingsUiState())
     val state: StateFlow<SettingsUiState> = _state.asStateFlow()
 
-    init {
-        load()
-    }
+    init { load() }
 
     fun load() {
         viewModelScope.launch {
             val settings = repo.getSettings()
-            Timber.d("Settings loaded: insulinType=${settings.insulinType}, basalType=${settings.basalType}")
+            Timber.d("Settings loaded: insulinType=${settings.insulinType}")
             _state.update {
                 it.copy(
                     settings = settings,
@@ -56,7 +62,6 @@ class SettingsViewModel @Inject constructor(
 
     fun save(settings: AppSettings) {
         viewModelScope.launch {
-            Timber.d("Saving settings")
             repo.saveSettings(settings)
             _state.update { it.copy(settings = settings) }
         }
@@ -64,28 +69,88 @@ class SettingsViewModel @Inject constructor(
 
     fun checkNightscout(url: String, secret: String) {
         viewModelScope.launch {
-            Timber.d("Checking Nightscout connection: url=$url")
             _state.update { it.copy(nsChecking = true, nsCheckResult = null) }
-
             val client = NightscoutClient(url, secret)
-            val result = withContext(Dispatchers.IO) {
-                client.checkConnection()
-            }
-
+            val result = withContext(Dispatchers.IO) { client.checkConnection() }
             when (result) {
-                is NsResult.Success -> {
-                    Timber.i("Nightscout connection successful")
-                }
-                is NsResult.Error -> {
-                    Timber.w("Nightscout connection failed: ${result.message}")
-                }
+                is NsResult.Success -> Timber.i("NS connection OK")
+                is NsResult.Error   -> Timber.w("NS connection failed: ${result.message}")
             }
-
             _state.update { it.copy(nsChecking = false, nsCheckResult = result) }
         }
     }
 
-    fun clearNsCheckResult() {
-        _state.update { it.copy(nsCheckResult = null) }
+    /** Загрузить настройки из Nightscout → применить локально */
+    fun loadFromNightscout() {
+        val s = _state.value.settings
+        if (!s.nsEnabled || s.nsUrl.isBlank()) return
+
+        viewModelScope.launch {
+            _state.update { it.copy(nsSyncing = true, nsSyncResult = null) }
+
+            val client = NightscoutClient(s.nsUrl, s.nsApiSecret)
+            val result = withContext(Dispatchers.IO) {
+                client.loadSettingsFromProfile(s)
+            }
+
+            when (result) {
+                is NsResult.Success -> {
+                    Timber.i("Settings loaded from NS")
+                    repo.saveSettings(result.data)
+                    _state.update {
+                        it.copy(
+                            settings = result.data,
+                            nsSyncing = false,
+                            nsSyncResult = NsSyncResult.DownloadSuccess
+                        )
+                    }
+                }
+                is NsResult.Error -> {
+                    Timber.w("Failed to load from NS: ${result.message}")
+                    _state.update {
+                        it.copy(
+                            nsSyncing = false,
+                            nsSyncResult = NsSyncResult.Error(result.message)
+                        )
+                    }
+                }
+            }
+        }
     }
+
+    /** Сохранить текущие настройки → Nightscout */
+    fun uploadToNightscout() {
+        val s = _state.value.settings
+        if (!s.nsEnabled || s.nsUrl.isBlank()) return
+
+        viewModelScope.launch {
+            _state.update { it.copy(nsSyncing = true, nsSyncResult = null) }
+
+            val client = NightscoutClient(s.nsUrl, s.nsApiSecret)
+            val result = withContext(Dispatchers.IO) {
+                client.saveSettingsToProfile(s)
+            }
+
+            when (result) {
+                is NsResult.Success -> {
+                    Timber.i("Settings uploaded to NS")
+                    _state.update {
+                        it.copy(nsSyncing = false, nsSyncResult = NsSyncResult.UploadSuccess)
+                    }
+                }
+                is NsResult.Error -> {
+                    Timber.w("Failed to upload to NS: ${result.message}")
+                    _state.update {
+                        it.copy(
+                            nsSyncing = false,
+                            nsSyncResult = NsSyncResult.Error(result.message)
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun clearNsCheckResult()  { _state.update { it.copy(nsCheckResult = null) } }
+    fun clearNsSyncResult()   { _state.update { it.copy(nsSyncResult = null) } }
 }

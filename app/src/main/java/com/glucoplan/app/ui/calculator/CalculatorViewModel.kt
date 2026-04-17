@@ -137,7 +137,7 @@ class CalculatorViewModel @Inject constructor(
     fun updateWeight(key: String, weight: Double) {
         _state.update {
             it.copy(components = it.components.map { c ->
-                if (c.key == key) c.copy(servingWeight = weight) else c
+                if (c.key == key) c.withWeight(weight) else c
             })
         }
     }
@@ -145,7 +145,7 @@ class CalculatorViewModel @Inject constructor(
     fun toggleAdjustment(key: String) {
         _state.update {
             it.copy(components = it.components.map { c ->
-                if (c.key == key) c.copy(includedInAdjustment = !c.includedInAdjustment) else c
+                if (c.key == key) c.withAdjustment(!c.includedInAdjustment) else c
             })
         }
     }
@@ -210,7 +210,25 @@ class CalculatorViewModel @Inject constructor(
                     totalFats = s.totalFats,
                     breadUnits = s.breadUnits
                 )
-                repo.saveMeal(meal, s.components)
+                val mealId = repo.saveMeal(meal, s.components)
+
+                // Отправить в Nightscout если запрошено и NS включён
+                if (sendToNightscout && s.settings.nsEnabled && s.settings.nsUrl.isNotBlank()) {
+                    try {
+                        val client = NightscoutClient(s.settings.nsUrl, s.settings.nsApiSecret)
+                        client.postTreatment(
+                            carbs = s.totalCarbs,
+                            insulin = s.totalDose,
+                            glucose = s.currentGlucose,
+                            notes = notes
+                        )
+                        Timber.i("Meal posted to Nightscout: mealId=$mealId")
+                    } catch (e: Exception) {
+                        Timber.w(e, "Failed to post meal to Nightscout")
+                        // Не прерываем — сохранение в БД уже прошло
+                    }
+                }
+
                 _state.update { it.copy(isSaving = false, savedSuccess = true, components = emptyList()) }
                 delay(2000)
                 _state.update { it.copy(savedSuccess = false) }

@@ -4,7 +4,7 @@ import androidx.room.*
 
 // ─── Product ─────────────────────────────────────────────────────────────────
 
-@Entity(tableName = "products")
+@Entity(tableName = "products", indices = [Index(value = ["name"], unique = true)])
 data class Product(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
@@ -157,13 +157,22 @@ data class CalcComponent(
     val fatsInPortion: Double get() = fatsPer100g * servingWeight / 100.0
     val glycemicLoad: Double get() = glycemicIndex * carbsInPortion / 100.0
 
-    fun copy(servingWeight: Double? = null, includedInAdjustment: Boolean? = null) = CalcComponent(
+    fun withWeight(servingWeight: Double) = CalcComponent(
         key = key, type = type, sourceId = sourceId, name = name,
-        servingWeight = servingWeight ?: this.servingWeight,
+        servingWeight = servingWeight,
         carbsPer100g = carbsPer100g, caloriesPer100g = caloriesPer100g,
         proteinsPer100g = proteinsPer100g, fatsPer100g = fatsPer100g,
         glycemicIndex = glycemicIndex,
-        includedInAdjustment = includedInAdjustment ?: this.includedInAdjustment
+        includedInAdjustment = includedInAdjustment
+    )
+
+    fun withAdjustment(includedInAdjustment: Boolean) = CalcComponent(
+        key = key, type = type, sourceId = sourceId, name = name,
+        servingWeight = servingWeight,
+        carbsPer100g = carbsPer100g, caloriesPer100g = caloriesPer100g,
+        proteinsPer100g = proteinsPer100g, fatsPer100g = fatsPer100g,
+        glycemicIndex = glycemicIndex,
+        includedInAdjustment = includedInAdjustment
     )
 
     companion object {
@@ -230,7 +239,7 @@ data class AppSettings(
     val insulinType: String = "fiasp",
     val basalType: String = "toujeo",
     val basalTime: String = "9:00",
-    val nsEnabled: Boolean = true,
-    val nsUrl: String = "https://j89028552.nightscout-jino.ru",
-    val nsApiSecret: String = "xj5kJyVv9n8F"
+    val nsEnabled: Boolean = false,
+    val nsUrl: String = "",
+    val nsApiSecret: String = ""
 )

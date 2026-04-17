@@ -26,7 +26,6 @@ enum class BolusTiming {
     AFTER_MEAL("После еды"),
     WAIT_AND_RECHECK("Подождать и проверить сахар");
 
-    val displayText: String get() = name
     val description: String
 
     constructor(description: String) {

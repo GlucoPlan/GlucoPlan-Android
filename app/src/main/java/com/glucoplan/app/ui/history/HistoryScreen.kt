@@ -49,6 +49,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,7 +61,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.glucoplan.app.domain.model.Meal
 import com.glucoplan.app.ui.calculator.CalculatorViewModel
 import com.glucoplan.app.ui.theme.GlucoseColor
-import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDateTime
@@ -80,6 +80,7 @@ fun HistoryScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     var selectedMeal by remember { mutableStateOf<Meal?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) { viewModel.load() }
 
@@ -137,7 +138,7 @@ fun HistoryScreen(
                         onDelete = { viewModel.delete(meal) },
                         onTap = { selectedMeal = meal },
                         onCopyToCalc = {
-                            MainScope().launch {
+                            scope.launch {
                                 val comps = viewModel.buildCalcComponents(meal.id)
                                 calcViewModel.loadFromHistory(comps)
                                 snackbarHostState.showSnackbar("Загружено в калькулятор")

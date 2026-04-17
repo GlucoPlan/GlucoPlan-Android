@@ -30,6 +30,9 @@ class ProductsViewModel @Inject constructor(
     private val _searchResults = MutableStateFlow<List<Product>>(emptyList())
     val searchResults: StateFlow<List<Product>> = _searchResults.asStateFlow()
 
+    private val _saveError = MutableStateFlow<String?>(null)
+    val saveError: StateFlow<String?> = _saveError.asStateFlow()
+
     private val _query = MutableStateFlow("")
     val query: StateFlow<String> = _query.asStateFlow()
 
@@ -64,8 +67,21 @@ class ProductsViewModel @Inject constructor(
     }
 
     fun save(product: Product) {
-        viewModelScope.launch { repo.saveProduct(product) }
+        viewModelScope.launch {
+            if (product.id == 0L) {
+                // Проверяем уникальность имени
+                val existing = repo.searchProducts(product.name.trim())
+                    .firstOrNull { it.name.equals(product.name.trim(), ignoreCase = true) }
+                if (existing != null) {
+                    _saveError.value = "Продукт \"${product.name.trim()}\" уже существует"
+                    return@launch
+                }
+            }
+            repo.saveProduct(product)
+        }
     }
+
+    fun clearSaveError() { _saveError.value = null }
 
     fun delete(id: Long) {
         viewModelScope.launch { repo.deleteProduct(id) }

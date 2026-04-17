@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import com.glucoplan.app.ui.calculator.CalculatorScreen
+import com.glucoplan.app.ui.chart.GlucoseChartScreen
 import com.glucoplan.app.ui.calculator.CalculatorUiState
 import com.glucoplan.app.ui.calculator.CalculatorViewModel
 import com.glucoplan.app.ui.dishes.DishesScreen
@@ -121,6 +122,7 @@ fun DisclaimerScreen(onAccepted: () -> Unit) {
 
 sealed class Screen(val route: String, val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
     object Calculator : Screen("calculator", "Калькулятор", Icons.Default.Calculate)
+    object Chart      : Screen("chart",      "График",      Icons.Default.Timeline)
     object History    : Screen("history",    "История",     Icons.Default.History)
     object Products   : Screen("products",   "Продукты",    Icons.Default.SetMeal)
     object Dishes     : Screen("dishes",     "Блюда",       Icons.Default.SoupKitchen)
@@ -128,7 +130,7 @@ sealed class Screen(val route: String, val label: String, val icon: androidx.com
 }
 
 val bottomScreens = listOf(
-    Screen.Calculator, Screen.History, Screen.Products, Screen.Dishes, Screen.Settings
+    Screen.Calculator, Screen.Chart, Screen.History, Screen.Products, Screen.Settings
 )
 
 @Composable
@@ -177,6 +179,9 @@ fun MainNavHost() {
                         navController.navigate("simulator")
                     }
                 )
+            }
+            composable(Screen.Chart.route) {
+                GlucoseChartScreen()
             }
             composable(Screen.History.route) {
                 HistoryScreen(

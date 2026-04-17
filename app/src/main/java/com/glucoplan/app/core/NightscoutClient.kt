@@ -1,5 +1,6 @@
 package com.glucoplan.app.core
 
+import com.glucoplan.app.domain.model.AppSettings
 import com.glucoplan.app.domain.model.CgmReading
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -480,6 +481,175 @@ class NightscoutClient(
             Timber.e(e, "$tag: Exception fetching profile")
             NsResult.Error(null, "Failed to get profile: ${e.message}", e)
         }
+    }
+
+
+    // -------------------------------------------------------------------------
+    // Profile Sync (AppSettings ↔ Nightscout)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Загружает профиль из Nightscout и конвертирует в AppSettings.
+     * Стандартные поля — из profile.store.Default (или первого профиля),
+     * кастомные поля GlucoPlan — из profile.store.GlucoPlan.
+     *
+     * Конвертация единиц: NS хранит мг/дл, мы используем ммоль/л (÷ 18).
+     */
+    suspend fun loadSettingsFromProfile(current: AppSettings): NsResult<AppSettings> {
+        val url = "${baseUrl.trimEnd('/')}/api/v1/profile.json"
+        Timber.d("$tag: Loading settings from profile")
+
+        return try {
+            val request = Request.Builder()
+                .url(url).header("api-secret", hashedSecret).get().build()
+            val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
+
+            if (!response.isSuccessful)
+                return NsResult.Error(response.code, "HTTP ${response.code}")
+
+            val body = response.body?.string()
+                ?: return NsResult.Error(null, "Пустой ответ от сервера")
+
+            val profiles = JSONArray(body)
+            if (profiles.length() == 0)
+                return NsResult.Error(null, "Профиль не найден в Nightscout")
+
+            val store = profiles.getJSONObject(0).optJSONObject("store")
+                ?: return NsResult.Error(null, "Нет секции store в профиле")
+
+            val profileName = store.keys().next()
+            val profileData = store.getJSONObject(profileName)
+            val gpBlock = store.optJSONObject("GlucoPlan")
+
+            // ISF: мг/дл → ммоль/л
+            val sensMgDl = profileData.optDouble("sens", -1.0)
+            val sensitivity = if (sensMgDl > 0) sensMgDl / 18.0 else current.sensitivity
+
+            // I:C ratio (carbratio) → НС хранит г углеводов на 1 ед инсулина
+            val carbratio = profileData.optDouble("carbratio", -1.0)
+
+            // Целевые значения
+            val targetLowMgDl = profileData.optJSONArray("target_low")
+                ?.optJSONObject(0)?.optDouble("value", -1.0) ?: -1.0
+            val targetHighMgDl = profileData.optJSONArray("target_high")
+                ?.optJSONObject(0)?.optDouble("value", -1.0) ?: -1.0
+            val targetMin = if (targetLowMgDl > 0) targetLowMgDl / 18.0 else current.targetGlucoseMin
+            val targetMax = if (targetHighMgDl > 0) targetHighMgDl / 18.0 else current.targetGlucoseMax
+            val targetMid = if (targetMin > 0 && targetMax > 0) (targetMin + targetMax) / 2.0 else current.targetGlucose
+
+            // Базальный
+            val basalRate = profileData.optJSONArray("basal")
+                ?.optJSONObject(0)?.optDouble("rate", -1.0) ?: -1.0
+
+            // Кастомные поля GlucoPlan
+            val carbsPerXe = gpBlock?.optDouble("carbsPerXe", -1.0)?.takeIf { it > 0 } ?: current.carbsPerXe
+            val carbCoeff  = gpBlock?.optDouble("carbCoefficient", -1.0)?.takeIf { it > 0 } ?: current.carbCoefficient
+            val insulinType = gpBlock?.optString("insulinType", "")?.takeIf { it.isNotBlank() } ?: current.insulinType
+            val basalType   = gpBlock?.optString("basalType", "")?.takeIf { it.isNotBlank() } ?: current.basalType
+            val basalTime   = gpBlock?.optString("basalTime", "")?.takeIf { it.isNotBlank() } ?: current.basalTime
+
+            val result = current.copy(
+                sensitivity      = sensitivity,
+                carbsPerXe       = carbsPerXe,
+                carbCoefficient  = carbCoeff,
+                targetGlucoseMin = targetMin,
+                targetGlucose    = targetMid,
+                targetGlucoseMax = targetMax,
+                basalDose        = if (basalRate > 0) basalRate else current.basalDose,
+                insulinType      = insulinType,
+                basalType        = basalType,
+                basalTime        = basalTime
+            )
+            Timber.i("$tag: Settings loaded: ISF=$sensitivity, carbsPerXe=$carbsPerXe, carbCoeff=$carbCoeff")
+            NsResult.Success(result)
+
+        } catch (e: Exception) {
+            Timber.e(e, "$tag: Exception loading settings from profile")
+            NsResult.Error(null, "Ошибка чтения профиля: ${e.message}", e)
+        }
+    }
+
+    /**
+     * Сохраняет AppSettings в Nightscout как профиль.
+     * Стандартные поля — в profile.store.Default,
+     * кастомные — в profile.store.GlucoPlan.
+     *
+     * Конвертация единиц: ммоль/л → мг/дл (× 18).
+     */
+    suspend fun saveSettingsToProfile(settings: AppSettings): NsResult<Unit> {
+        val url = "${baseUrl.trimEnd('/')}/api/v1/profile"
+        Timber.d("$tag: Saving settings to NS profile")
+
+        return try {
+            val sensMgDl   = settings.sensitivity * 18.0
+            val targetLow  = settings.targetGlucoseMin * 18.0
+            val targetHigh = settings.targetGlucoseMax * 18.0
+            // carbratio = carbsPerXe / carbCoefficient (г углеводов на 1 ед)
+            val carbratio  = if (settings.carbCoefficient > 0)
+                settings.carbsPerXe / settings.carbCoefficient else settings.carbsPerXe
+
+            val defaultProfile = JSONObject().apply {
+                put("sens",      sensMgDl)
+                put("carbratio", carbratio)
+                put("units",     "mmol")
+                put("target_low", JSONArray().put(
+                    JSONObject().put("time", "00:00").put("value", targetLow).put("timeAsSeconds", 0)
+                ))
+                put("target_high", JSONArray().put(
+                    JSONObject().put("time", "00:00").put("value", targetHigh).put("timeAsSeconds", 0)
+                ))
+                put("basal", JSONArray().put(
+                    JSONObject()
+                        .put("time", settings.basalTime)
+                        .put("value", settings.basalDose)
+                        .put("timeAsSeconds", timeToSeconds(settings.basalTime))
+                ))
+            }
+
+            val gpProfile = JSONObject().apply {
+                put("carbsPerXe",      settings.carbsPerXe)
+                put("carbCoefficient", settings.carbCoefficient)
+                put("insulinType",     settings.insulinType)
+                put("basalType",       settings.basalType)
+                put("basalTime",       settings.basalTime)
+                put("insulinStep",     settings.insulinStep)
+            }
+
+            val payload = JSONObject().apply {
+                put("defaultProfile", "Default")
+                put("store", JSONObject().apply {
+                    put("Default",   defaultProfile)
+                    put("GlucoPlan", gpProfile)
+                })
+                put("startDate", java.time.Instant.now().toString())
+                put("units", "mmol")
+            }
+
+            val body = payload.toString().toRequestBody("application/json".toMediaType())
+            val request = Request.Builder()
+                .url(url).header("api-secret", hashedSecret)
+                .header("Content-Type", "application/json")
+                .post(body).build()
+
+            val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
+
+            if (response.isSuccessful) {
+                Timber.i("$tag: Settings saved to NS profile")
+                NsResult.Success(Unit)
+            } else {
+                NsResult.Error(response.code, "HTTP ${response.code}: ${response.body?.string()?.take(200)}")
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "$tag: Exception saving settings to profile")
+            NsResult.Error(null, "Ошибка записи профиля: ${e.message}", e)
+        }
+    }
+
+    private fun timeToSeconds(time: String): Int {
+        val parts = time.split(":")
+        val h = parts.getOrNull(0)?.toIntOrNull() ?: 0
+        val m = parts.getOrNull(1)?.toIntOrNull() ?: 0
+        return h * 3600 + m * 60
     }
 
     // -------------------------------------------------------------------------
