@@ -26,32 +26,23 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
-      - name: Build release APK
-        run: ./gradlew assembleRelease
-
       - name: Decode keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/keystore.jks
+          file app/keystore.jks  # Проверка, что файл создан
 
-      - name: Find build-tools version
-        id: build_tools
+      - name: Build and sign APK
+        run: ./gradlew assembleRelease
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      - name: Verify APK signature
         run: |
           BUILD_TOOLS=$(ls $ANDROID_SDK_ROOT/build-tools/ | sort -V | tail -1)
-          echo "version=$BUILD_TOOLS" >> $GITHUB_OUTPUT
-
-      - name: Sign APK
-        run: |
-          BT="${{ steps.build_tools.outputs.version }}"
-          $ANDROID_SDK_ROOT/build-tools/$BT/zipalign -v -p 4 \
-            app/build/outputs/apk/release/app-release-unsigned.apk \
-            app/build/outputs/apk/release/app-release-aligned.apk
-          $ANDROID_SDK_ROOT/build-tools/$BT/apksigner sign \
-            --ks app/keystore.jks \
-            --ks-key-alias ${{ secrets.KEY_ALIAS }} \
-            --ks-pass pass:${{ secrets.KEYSTORE_PASSWORD }} \
-            --key-pass pass:${{ secrets.KEY_PASSWORD }} \
-            --out app/build/outputs/apk/release/app-release-signed.apk \
-            app/build/outputs/apk/release/app-release-aligned.apk
+          $ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS/apksigner verify \
+            app/build/outputs/apk/release/app-release.apk
 
       - name: Get version name
         id: version
@@ -67,4 +58,8 @@ jobs:
           name: "GlucoPlan ${{ steps.version.outputs.version }}"
           body: |
             Автоматическая сборка из коммита ${{ github.sha }}
-          files: app/build/outputs/apk/release/app-release-signed.apk
+            
+            Подписанный APK готов к установке.
+          files: app/build/outputs/apk/release/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
