@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.NoFood
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Upload
+import androidx.compose.material.icons.filled.SoupKitchen
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -60,7 +61,10 @@ import com.glucoplan.app.domain.model.Product
 import androidx.compose.runtime.LaunchedEffect
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProductsScreen(viewModel: ProductsViewModel = hiltViewModel()) {
+fun ProductsScreen(
+    viewModel: ProductsViewModel = hiltViewModel(),
+    onNavigateToDishes: () -> Unit = {}
+) {
     val products by viewModel.filteredProducts.collectAsStateWithLifecycle()
     val query by viewModel.query.collectAsStateWithLifecycle()
     val sortField by viewModel.sortField.collectAsStateWithLifecycle()
@@ -91,6 +95,9 @@ fun ProductsScreen(viewModel: ProductsViewModel = hiltViewModel()) {
             TopAppBar(
                 title = { Text("Продукты") },
                 actions = {
+                    IconButton(onClick = onNavigateToDishes) {
+                        Icon(Icons.Default.SoupKitchen, "Блюда")
+                    }
                     IconButton(onClick = {
                         csvPicker.launch(arrayOf("text/csv", "text/comma-separated-values", "*/*"))
                     }) {

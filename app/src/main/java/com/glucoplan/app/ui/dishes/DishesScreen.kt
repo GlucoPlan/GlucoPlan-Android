@@ -73,7 +73,8 @@ import java.io.File
 @Composable
 fun DishesScreen(
     viewModel: DishesViewModel = hiltViewModel(),
-    onNavigateToPans: () -> Unit = {}
+    onNavigateToPans: () -> Unit = {},
+    onBack: (() -> Unit)? = null
 ) {
     val dishes by viewModel.dishes.collectAsStateWithLifecycle()
     var query by remember { mutableStateOf("") }
@@ -87,6 +88,13 @@ fun DishesScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Блюда") },
+                navigationIcon = {
+                    if (onBack != null) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.Default.ArrowBack, "Назад")
+                        }
+                    }
+                },
                 actions = {
                     IconButton(onClick = onNavigateToPans) {
                         Icon(Icons.Default.Kitchen, "Кастрюли")

@@ -197,9 +197,16 @@ fun MainNavHost() {
                     }
                 )
             }
-            composable(Screen.Products.route) { ProductsScreen() }
+            composable(Screen.Products.route) {
+                ProductsScreen(
+                    onNavigateToDishes = { navController.navigate(Screen.Dishes.route) }
+                )
+            }
             composable(Screen.Dishes.route) {
-                DishesScreen(onNavigateToPans = { navController.navigate("pans") })
+                DishesScreen(
+                    onNavigateToPans = { navController.navigate("pans") },
+                    onBack = { navController.popBackStack() }
+                )
             }
             composable(Screen.Settings.route) {
                 SettingsScreen(onNavigateToPans = { navController.navigate("pans") })
