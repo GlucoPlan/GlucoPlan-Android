@@ -1,5 +1,5 @@
 package com.glucoplan.app
-
+import com.glucoplan.app.ui.chart.GlucoseChartScreen
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
