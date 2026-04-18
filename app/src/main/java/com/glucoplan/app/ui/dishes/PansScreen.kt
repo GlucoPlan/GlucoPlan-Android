@@ -142,11 +142,13 @@ fun PansScreen(
     if (showAdd || editPan != null) {
         PanEditDialog(
             pan = editPan,
-            onDismiss = { },
+            onDismiss = { showAdd = false; editPan = null },
             onSave = { pan ->
                 scope.launch {
                     viewModel.savePan(pan)
                     viewModel.loadPans()
+                    showAdd = false
+                    editPan = null
                 }
             }
         )

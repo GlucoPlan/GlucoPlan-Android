@@ -170,7 +170,8 @@ fun SettingsScreen(
                         label = "URL сервера",
                         value = nsUrl,
                         onValue = { nsUrl = it },
-                        placeholder = "https://my.nightscout.io"
+                        placeholder = "https://my.nightscout.io",
+                        keyboardType = KeyboardType.Uri
                     ) { viewModel.save(buildSettings()) }
 
                     OutlinedTextField(
@@ -501,6 +502,7 @@ private fun BlurSaveField(
     onValue: (String) -> Unit,
     modifier: Modifier = Modifier.fillMaxWidth(),
     placeholder: String? = null,
+    keyboardType: KeyboardType = KeyboardType.Decimal,
     onBlur: () -> Unit
 ) {
     OutlinedTextField(
@@ -510,7 +512,7 @@ private fun BlurSaveField(
         placeholder = placeholder?.let { { Text(it) } },
         modifier = modifier.onFocusChanged { if (!it.isFocused) onBlur() },
         singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType)
     )
 }
 
