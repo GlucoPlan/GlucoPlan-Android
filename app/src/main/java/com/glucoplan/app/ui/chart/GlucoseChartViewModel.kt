@@ -41,8 +41,11 @@ sealed class ChartEvent {
 
     data class Meal(
         override val time: Instant,
-        val carbs: Double,         // г
-        val insulin: Double,       // ед
+        val carbs: Double,          // г
+        val insulin: Double,        // ед
+        val proteins: Double = 0.0, // г
+        val fats: Double = 0.0,     // г
+        val giCategory: String = "", // "low" | "medium" | "high" | ""
         val notes: String
     ) : ChartEvent()
 }
@@ -142,10 +145,22 @@ class GlucoseChartViewModel @Inject constructor(
         }.sortedBy { it.time }
 
         val events = mutableListOf<ChartEvent>()
+        val manualReadings = mutableListOf<GlucosePoint>()
+
         if (treatResult is NsResult.Success) {
             treatResult.data.forEach { t ->
                 when {
-                    // Болюс / коррекция
+                    // Ручной замер глюкометром
+                    t.eventType == "BG Check" || t.glucoseType == "Finger" -> {
+                        t.glucose?.let { g ->
+                            manualReadings.add(GlucosePoint(
+                                time = t.createdAt,
+                                glucose = g,
+                                isManual = true
+                            ))
+                        }
+                    }
+                    // Болюс / коррекция без еды
                     t.insulin != null && t.insulin > 0 && (t.carbs == null || t.carbs == 0.0) -> {
                         events.add(ChartEvent.Injection(
                             time = t.createdAt,
@@ -156,10 +171,15 @@ class GlucoseChartViewModel @Inject constructor(
                     }
                     // Приём пищи (с инсулином или без)
                     t.carbs != null && t.carbs > 0 -> {
+                        // Парсим БЖУ и ГИ из кастомных полей NS
+                        val gi = t.glycemicIndex ?: ""
                         events.add(ChartEvent.Meal(
                             time = t.createdAt,
                             carbs = t.carbs,
                             insulin = t.insulin ?: 0.0,
+                            proteins = t.proteins ?: 0.0,
+                            fats = t.fats ?: 0.0,
+                            giCategory = gi,
                             notes = t.notes ?: ""
                         ))
                     }
@@ -210,6 +230,8 @@ class GlucoseChartViewModel @Inject constructor(
                             time = mealTime,
                             carbs = meal.totalCarbs,
                             insulin = meal.insulinDose,
+                            proteins = meal.totalProteins,
+                            fats = meal.totalFats,
                             notes = meal.notes
                         ))
                     }
@@ -224,10 +246,20 @@ class GlucoseChartViewModel @Inject constructor(
         val yMin = (allGlucose.minOrNull() ?: 2.0).coerceAtMost(2.0)
         val yMax = (allGlucose.maxOrNull() ?: 16.0).coerceAtLeast(16.0)
 
+        // Добавляем ручные замеры к CGM точкам (с флагом isManual=true)
+        // Дедупликация: не добавляем если уже есть CGM точка в ±2 минуты
+        val mergedPoints = (cgmPoints + manualReadings
+            .filter { manual ->
+                cgmPoints.none { cgm ->
+                    kotlin.math.abs(cgm.time.epochSecond - manual.time.epochSecond) < 120
+                }
+            })
+            .sortedBy { it.time }
+
         _state.update {
             it.copy(
                 loading = false,
-                points = cgmPoints,
+                points = mergedPoints,
                 events = events.sortedBy { e -> e.time },
                 yMin = yMin,
                 yMax = yMax,

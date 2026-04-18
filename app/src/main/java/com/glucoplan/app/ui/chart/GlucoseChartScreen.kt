@@ -221,10 +221,25 @@ private fun TooltipPanel(tooltip: ChartTooltip?, settings: com.glucoplan.app.dom
                             Spacer(Modifier.width(4.dp))
                             Text("Еда", fontSize = 11.sp, color = MaterialTheme.colorScheme.outline)
                         }
-                        Text("%.0f г углеводов".format(ev.carbs),
+                        // Углеводы + ГИ категория
+                        val giText = when (ev.giCategory) {
+                            "low"    -> " · ГИ↓"
+                            "medium" -> " · ГИ~"
+                            "high"   -> " · ГИ↑"
+                            else     -> ""
+                        }
+                        Text("УВ: %.0f г$giText".format(ev.carbs),
                             fontWeight = FontWeight.Medium, fontSize = 13.sp)
+                        // Белки и жиры
+                        if (ev.proteins > 0 || ev.fats > 0) {
+                            val bjuParts = mutableListOf<String>()
+                            if (ev.proteins > 0) bjuParts.add("Б: %.0f".format(ev.proteins))
+                            if (ev.fats > 0) bjuParts.add("Ж: %.0f".format(ev.fats))
+                            Text(bjuParts.joinToString("  "),
+                                fontSize = 11.sp, color = MaterialTheme.colorScheme.outline)
+                        }
                         if (ev.insulin > 0)
-                            Text("%.1f ед инсулина".format(ev.insulin),
+                            Text("%.1f ед".format(ev.insulin),
                                 fontSize = 12.sp, color = ColorInsulin)
                     }
                     is ChartEvent.Injection -> Column(horizontalAlignment = Alignment.End) {
@@ -258,7 +273,7 @@ private fun Legend() {
         LegendDot(ColorHypo,    "Гипо/Гипер")
         LegendDot(ColorMeal,    "Еда")
         LegendDot(ColorInsulin, "Инсулин")
-        LegendDot(ColorManual,  "Глюкометр")
+        LegendDot(ColorManual,  "Глюкометр ●")
     }
 }
 

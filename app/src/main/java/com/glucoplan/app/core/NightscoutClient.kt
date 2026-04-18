@@ -44,6 +44,9 @@ data class NsTreatment(
     val glucoseType: String?,
     val carbs: Double?,
     val insulin: Double?,
+    val proteins: Double?,
+    val fats: Double?,
+    val glycemicIndex: String?,  // "low" | "medium" | "high" | null
     val notes: String?
 )
 
@@ -333,6 +336,9 @@ class NightscoutClient(
                         glucoseType = t.optString("glucoseType", null),
                         carbs = t.optDouble("carbs", -1.0).let { if (it > 0) it else null },
                         insulin = t.optDouble("insulin", -1.0).let { if (it > 0) it else null },
+                        proteins = t.optDouble("protein", -1.0).let { if (it > 0) it else null },
+                        fats = t.optDouble("fat", -1.0).let { if (it > 0) it else null },
+                        glycemicIndex = t.optString("glycemicIndex", null).takeIf { !it.isNullOrBlank() },
                         notes = t.optString("notes", null)
                     ))
                 } catch (e: Exception) {
@@ -353,10 +359,27 @@ class NightscoutClient(
         carbs: Double,
         insulin: Double,
         glucose: Double,
-        notes: String
+        notes: String,
+        proteins: Double = 0.0,
+        fats: Double = 0.0,
+        glycemicIndex: Double = 0.0
     ): NsResult<Unit> {
         val url = "${baseUrl.trimEnd('/')}/api/v1/treatments"
-        Timber.d("$tag: Posting treatment: carbs=$carbs, insulin=$insulin, glucose=$glucose")
+        Timber.d("$tag: Posting treatment: carbs=$carbs, insulin=$insulin, glucose=$glucose, proteins=$proteins, fats=$fats, gi=$glycemicIndex")
+
+        // ГИ → категория
+        val giCategory = when {
+            glycemicIndex <= 0   -> null
+            glycemicIndex < 55   -> "low"
+            glycemicIndex < 70   -> "medium"
+            else                 -> "high"
+        }
+        val giLabel = when (giCategory) {
+            "low"    -> "ГИ: низкий"
+            "medium" -> "ГИ: средний"
+            "high"   -> "ГИ: высокий"
+            else     -> null
+        }
 
         return try {
             val json = JSONObject().apply {
@@ -369,7 +392,21 @@ class NightscoutClient(
                     put("glucoseType", "Manual")
                     put("units", "mg/dl")
                 }
-                if (notes.isNotBlank()) put("notes", notes)
+                // БЖУ — хранятся в notes и в кастомных полях
+                if (proteins > 0) put("protein", "%.1f".format(proteins))
+                if (fats > 0) put("fat", "%.1f".format(fats))
+                if (giCategory != null) put("glycemicIndex", giCategory)
+                // Собираем notes: пользовательские заметки + БЖУ + ГИ
+                val parts = mutableListOf<String>()
+                if (notes.isNotBlank()) parts.add(notes)
+                if (proteins > 0 || fats > 0) {
+                    val bjuParts = mutableListOf<String>()
+                    if (proteins > 0) bjuParts.add("Б: %.1f г".format(proteins))
+                    if (fats > 0) bjuParts.add("Ж: %.1f г".format(fats))
+                    parts.add(bjuParts.joinToString(", "))
+                }
+                if (giLabel != null) parts.add(giLabel)
+                if (parts.isNotEmpty()) put("notes", parts.joinToString(" | "))
             }
 
             val body = json.toString().toRequestBody("application/json".toMediaType())

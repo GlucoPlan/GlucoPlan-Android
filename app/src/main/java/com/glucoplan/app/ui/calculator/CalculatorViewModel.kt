@@ -217,10 +217,15 @@ class CalculatorViewModel @Inject constructor(
                     try {
                         val client = NightscoutClient(s.settings.nsUrl, s.settings.nsApiSecret)
                         client.postTreatment(
-                            carbs = s.totalCarbs,
-                            insulin = s.totalDose,
-                            glucose = s.currentGlucose,
-                            notes = notes
+                            carbs    = s.totalCarbs,
+                            insulin  = s.totalDose,
+                            glucose  = s.currentGlucose,
+                            notes    = notes,
+                            proteins = s.totalProteins,
+                            fats     = s.totalFats,
+                            glycemicIndex = s.components
+                                .sumOf { it.glycemicIndex * it.carbsInPortion }
+                                .let { if (s.totalCarbs > 0) it / s.totalCarbs else 0.0 }
                         )
                         Timber.i("Meal posted to Nightscout: mealId=$mealId")
                     } catch (e: Exception) {
