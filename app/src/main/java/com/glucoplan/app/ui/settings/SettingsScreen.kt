@@ -511,36 +511,55 @@ private fun SettingsDropdown(
 // ─── Скачивание и установка APK ───────────────────────────────────────────────
 
 private fun downloadAndInstallApk(context: android.content.Context, url: String, version: String) {
+    val apkName = "GlucoPlan_$version.apk"
+    // Сохраняем в getExternalFilesDir — туда у нас есть доступ без WRITE_EXTERNAL_STORAGE
+    // и этот путь объявлен в file_paths.xml как external-files-path/Downloads/
+    val destDir = context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS)
+        ?: return
+    val destFile = java.io.File(destDir, apkName)
+
     val request = android.app.DownloadManager.Request(android.net.Uri.parse(url)).apply {
         setTitle("GlucoPlan $version")
         setDescription("Загрузка обновления...")
-        setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-        setDestinationInExternalFilesDir(
-            context,
-            android.os.Environment.DIRECTORY_DOWNLOADS,
-            "GlucoPlan_$version.apk"
+        setNotificationVisibility(
+            android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED
         )
+        setDestinationUri(android.net.Uri.fromFile(destFile))
         setMimeType("application/vnd.android.package-archive")
-        allowScanningByMediaScanner()
     }
 
     val dm = context.getSystemService(android.content.Context.DOWNLOAD_SERVICE)
             as android.app.DownloadManager
     val downloadId = dm.enqueue(request)
 
-    // Слушаем завершение загрузки
+    // BroadcastReceiver — слушаем завершение загрузки
     val receiver = object : android.content.BroadcastReceiver() {
         override fun onReceive(ctx: android.content.Context, intent: android.content.Intent) {
-            val id = intent.getLongExtra(android.app.DownloadManager.EXTRA_DOWNLOAD_ID, -1)
-            if (id == downloadId) {
-                ctx.unregisterReceiver(this)
+            val id = intent.getLongExtra(android.app.DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
+            if (id != downloadId) return
+
+            ctx.unregisterReceiver(this)
+
+            // Проверяем статус загрузки
+            val query = android.app.DownloadManager.Query().setFilterById(downloadId)
+            val cursor = dm.query(query)
+            val success = cursor?.use { c ->
+                c.moveToFirst() && c.getInt(
+                    c.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_STATUS)
+                ) == android.app.DownloadManager.STATUS_SUCCESSFUL
+            } ?: false
+
+            if (!success) {
+                android.widget.Toast.makeText(ctx, "Ошибка загрузки APK", android.widget.Toast.LENGTH_LONG).show()
+                return
+            }
+
+            // Выдаём URI через FileProvider и запускаем установщик
+            try {
                 val apkUri = androidx.core.content.FileProvider.getUriForFile(
                     ctx,
                     "${ctx.packageName}.fileprovider",
-                    java.io.File(
-                        ctx.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS),
-                        "GlucoPlan_$version.apk"
-                    )
+                    destFile
                 )
                 val installIntent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
                     setDataAndType(apkUri, "application/vnd.android.package-archive")
@@ -548,9 +567,12 @@ private fun downloadAndInstallApk(context: android.content.Context, url: String,
                     addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
                 ctx.startActivity(installIntent)
+            } catch (e: Exception) {
+                android.widget.Toast.makeText(ctx, "Не удалось открыть установщик: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
             }
         }
     }
+
     context.registerReceiver(
         receiver,
         android.content.IntentFilter(android.app.DownloadManager.ACTION_DOWNLOAD_COMPLETE),
