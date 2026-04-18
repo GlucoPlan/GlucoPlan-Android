@@ -1,6 +1,8 @@
 package com.glucoplan.app.ui.settings
 
 import androidx.lifecycle.ViewModel
+import com.glucoplan.app.BuildConfig as AppBuildConfig
+import kotlinx.coroutines.Dispatchers
 import androidx.lifecycle.viewModelScope
 import com.glucoplan.app.core.NightscoutClient
 import com.glucoplan.app.core.NsResult
@@ -8,7 +10,6 @@ import com.glucoplan.app.data.repository.GlucoRepository
 import com.glucoplan.app.domain.model.AppSettings
 import com.glucoplan.app.domain.model.InsulinProfiles
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,7 +27,12 @@ data class SettingsUiState(
     val nsSyncing: Boolean = false,
     val nsSyncResult: NsSyncResult? = null,
     val insulinOptions: List<Pair<String, String>> = emptyList(),
-    val basalOptions: List<Pair<String, String>> = emptyList()
+    val basalOptions: List<Pair<String, String>> = emptyList(),
+    // Обновление
+    val updateAvailable: Boolean = false,
+    val latestVersion: String? = null,
+    val latestApkUrl: String? = null,
+    val updateChecking: Boolean = false
 )
 
 sealed class NsSyncResult {
@@ -153,4 +159,71 @@ class SettingsViewModel @Inject constructor(
 
     fun clearNsCheckResult()  { _state.update { it.copy(nsCheckResult = null) } }
     fun clearNsSyncResult()   { _state.update { it.copy(nsSyncResult = null) } }
+
+    // ─── Проверка обновлений ──────────────────────────────────────────────────
+
+    fun checkForUpdates() {
+        viewModelScope.launch {
+            _state.update { it.copy(updateChecking = true) }
+            try {
+                val client = okhttp3.OkHttpClient()
+                val request = okhttp3.Request.Builder()
+                    .url("https://api.github.com/repos/GlucoPlan/GlucoPlan-Android/releases/latest")
+                    .header("Accept", "application/vnd.github.v3+json")
+                    .build()
+                val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
+                val body = response.body?.string() ?: run {
+                    _state.update { it.copy(updateChecking = false) }
+                    return@launch
+                }
+                val json = org.json.JSONObject(body)
+                val tagName = json.optString("tag_name", "")   // "v0.3.5"
+                val latestVer = tagName.removePrefix("v")
+                val currentVer = AppBuildConfig.VERSION_NAME
+
+                // Ищем URL APK в assets релиза
+                val assets = json.optJSONArray("assets")
+                var apkUrl: String? = null
+                if (assets != null) {
+                    for (i in 0 until assets.length()) {
+                        val asset = assets.getJSONObject(i)
+                        if (asset.optString("name", "").endsWith(".apk")) {
+                            apkUrl = asset.optString("browser_download_url")
+                            break
+                        }
+                    }
+                }
+
+                val isNewer = isVersionNewer(latestVer, currentVer)
+                Timber.i("Update check: current=$currentVer latest=$latestVer newer=$isNewer")
+                _state.update { it.copy(
+                    updateChecking = false,
+                    updateAvailable = isNewer,
+                    latestVersion  = if (isNewer) latestVer else null,
+                    latestApkUrl   = if (isNewer) apkUrl else null
+                )}
+            } catch (e: Exception) {
+                Timber.w(e, "Update check failed")
+                _state.update { it.copy(updateChecking = false) }
+            }
+        }
+    }
+
+    fun clearUpdateState() {
+        _state.update { it.copy(updateAvailable = false, latestVersion = null, latestApkUrl = null) }
+    }
+
+    private fun isVersionNewer(latest: String, current: String): Boolean {
+        return try {
+            val l = latest.trim().split(".").map { it.toInt() }
+            val c = current.trim().split(".").map { it.toInt() }
+            for (i in 0 until maxOf(l.size, c.size)) {
+                val lv = l.getOrElse(i) { 0 }
+                val cv = c.getOrElse(i) { 0 }
+                if (lv > cv) return true
+                if (lv < cv) return false
+            }
+            false
+        } catch (e: Exception) { false }
+    }
 }

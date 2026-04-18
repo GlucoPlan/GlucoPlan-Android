@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
+import android.content.Context
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -52,7 +53,8 @@ fun SettingsScreen(
     var nsUrl       by remember(s.nsUrl)              { mutableStateOf(s.nsUrl) }
     var nsSecret    by remember(s.nsApiSecret)        { mutableStateOf(s.nsApiSecret) }
     var nsEnabled   by remember(s.nsEnabled)          { mutableStateOf(s.nsEnabled) }
-    var showSecret  by remember                       { mutableStateOf(false) }
+    var showSecret      by remember { mutableStateOf(false) }
+    var showUpdateDialog by remember { mutableStateOf(false) }
 
     fun buildSettings() = s.copy(
         carbsPerXe       = carbsPerXe.toDoubleOrNull()  ?: s.carbsPerXe,
@@ -74,6 +76,9 @@ fun SettingsScreen(
 
     // Показываем снэкбар при результате синхронизации
     val snackbarHostState = remember { SnackbarHostState() }
+    // Проверяем обновления при каждом открытии вкладки
+    LaunchedEffect(Unit) { viewModel.checkForUpdates() }
+
     LaunchedEffect(state.nsSyncResult) {
         state.nsSyncResult?.let { result ->
             val msg = when (result) {
@@ -372,8 +377,30 @@ fun SettingsScreen(
 
             SectionHeader("О программе")
             ListItem(
-                headlineContent  = { Text("Версия") },
-                trailingContent  = { Text(BuildConfig.VERSION_NAME) }
+                headlineContent = { Text("Версия") },
+                supportingContent = if (state.updateAvailable) {
+                    { Text("Доступна ${state.latestVersion}", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp) }
+                } else null,
+                trailingContent = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        when {
+                            state.updateChecking -> {
+                                CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                                Spacer(Modifier.width(8.dp))
+                                Text(BuildConfig.VERSION_NAME)
+                            }
+                            state.updateAvailable -> {
+                                Text(BuildConfig.VERSION_NAME, color = MaterialTheme.colorScheme.outline)
+                                Spacer(Modifier.width(8.dp))
+                                Icon(Icons.Default.SystemUpdate, null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp))
+                            }
+                            else -> Text(BuildConfig.VERSION_NAME)
+                        }
+                    }
+                },
+                modifier = if (state.updateAvailable) Modifier.clickable { showUpdateDialog = true } else Modifier
             )
             ListItem(
                 headlineContent  = { Text("GitHub") },
@@ -480,4 +507,54 @@ private fun SettingsDropdown(
             }
         }
     }
+}
+
+// ─── Скачивание и установка APK ───────────────────────────────────────────────
+
+private fun downloadAndInstallApk(context: android.content.Context, url: String, version: String) {
+    val request = android.app.DownloadManager.Request(android.net.Uri.parse(url)).apply {
+        setTitle("GlucoPlan $version")
+        setDescription("Загрузка обновления...")
+        setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+        setDestinationInExternalFilesDir(
+            context,
+            android.os.Environment.DIRECTORY_DOWNLOADS,
+            "GlucoPlan_$version.apk"
+        )
+        setMimeType("application/vnd.android.package-archive")
+        allowScanningByMediaScanner()
+    }
+
+    val dm = context.getSystemService(android.content.Context.DOWNLOAD_SERVICE)
+            as android.app.DownloadManager
+    val downloadId = dm.enqueue(request)
+
+    // Слушаем завершение загрузки
+    val receiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(ctx: android.content.Context, intent: android.content.Intent) {
+            val id = intent.getLongExtra(android.app.DownloadManager.EXTRA_DOWNLOAD_ID, -1)
+            if (id == downloadId) {
+                ctx.unregisterReceiver(this)
+                val apkUri = androidx.core.content.FileProvider.getUriForFile(
+                    ctx,
+                    "${ctx.packageName}.fileprovider",
+                    java.io.File(
+                        ctx.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS),
+                        "GlucoPlan_$version.apk"
+                    )
+                )
+                val installIntent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                    setDataAndType(apkUri, "application/vnd.android.package-archive")
+                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                ctx.startActivity(installIntent)
+            }
+        }
+    }
+    context.registerReceiver(
+        receiver,
+        android.content.IntentFilter(android.app.DownloadManager.ACTION_DOWNLOAD_COMPLETE),
+        android.content.Context.RECEIVER_NOT_EXPORTED
+    )
 }

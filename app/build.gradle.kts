@@ -1,4 +1,19 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
+
+// ─── Версия читается из version.properties ────────────────────────────────────
+// Менять VERSION_MAJOR и VERSION_MINOR вручную в том файле.
+// VERSION_PATCH инкрементируется автоматически в GitHub Actions при каждом коммите.
+val versionProps = Properties().also { props ->
+    val f = rootProject.file("version.properties")
+    if (f.exists()) props.load(f.inputStream())
+}
+val vMajor = versionProps.getProperty("VERSION_MAJOR", "0").trim().toInt()
+val vMinor = versionProps.getProperty("VERSION_MINOR", "3").trim().toInt()
+val vPatch = versionProps.getProperty("VERSION_PATCH", "0").trim().toInt()
+val appVersionName = "$vMajor.$vMinor.$vPatch"
+val appVersionCode = vMajor * 10000 + vMinor * 100 + vPatch
+
 
 plugins {
     alias(libs.plugins.android.application)
@@ -10,14 +25,14 @@ plugins {
 
 android {
     namespace = "com.glucoplan.app"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.glucoplan.app"
         minSdk = 29
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.3.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -55,10 +70,23 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true  // генерирует BuildConfig с versionName/versionCode из gradle
     }
     
     buildToolsVersion = "36.1.0"
     ndkVersion = "28.2.13676358"
+
+    // ─── Переименование APK: GlucoPlan_0.3.1.apk ─────────────────────────────
+    applicationVariants.all {
+        val variant = this
+        variant.outputs
+            .map { it as com.android.build.gradle.internal.api.BaseVariantOutputImpl }
+            .forEach { output ->
+                if (variant.buildType.name == "release") {
+                    output.outputFileName = "GlucoPlan_${variant.versionName}.apk"
+                }
+            }
+    }
 }
 
 kotlin {
