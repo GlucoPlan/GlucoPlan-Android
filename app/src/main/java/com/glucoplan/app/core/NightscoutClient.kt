@@ -76,10 +76,18 @@ data class NsBasalEntry(
  * сертификатом — в этом случае пользователь осознаёт риск.
  */
 class NightscoutClient(
-    private val baseUrl: String,
+    baseUrl: String,
     private val apiSecret: String,
     private val allowSelfSigned: Boolean = false
 ) {
+    private val baseUrl = baseUrl.trim().let {
+        if (it.isNotBlank() && !it.startsWith("http://") && !it.startsWith("https://")) {
+            "https://$it"
+        } else {
+            it
+        }
+    }.trimEnd('/')
+
     private val tag = "Nightscout"
 
     // Trust-all implementation — ONLY used when allowSelfSigned == true
@@ -124,7 +132,8 @@ class NightscoutClient(
     // -------------------------------------------------------------------------
 
     suspend fun checkConnection(): NsResult<Unit> {
-        val url = "${baseUrl.trimEnd('/')}/api/v1/status.json"
+        if (baseUrl.isBlank()) return NsResult.Error(message = "Nightscout URL is empty")
+        val url = "$baseUrl/api/v1/status.json"
         Timber.d("$tag: Checking connection to $url")
 
         return try {
@@ -168,7 +177,8 @@ class NightscoutClient(
     // -------------------------------------------------------------------------
 
     suspend fun getLatestReading(): NsResult<CgmReading> {
-        val url = "${baseUrl.trimEnd('/')}/api/v1/entries/sgv.json?count=5"
+        if (baseUrl.isBlank()) return NsResult.Error(message = "Nightscout URL is empty")
+        val url = "$baseUrl/api/v1/entries/sgv.json?count=5"
         Timber.d("$tag: Fetching latest CGM reading from $url")
 
         return try {
@@ -246,7 +256,8 @@ class NightscoutClient(
     }
 
     suspend fun getEntries(since: Instant, count: Int = 100): NsResult<List<CgmReading>> {
-        val url = "${baseUrl.trimEnd('/')}/api/v1/entries/sgv.json?count=$count&find[date][\$gte]=${since.toEpochMilli()}"
+        if (baseUrl.isBlank()) return NsResult.Error(message = "Nightscout URL is empty")
+        val url = "$baseUrl/api/v1/entries/sgv.json?count=$count&find[date][\$gte]=${since.toEpochMilli()}"
         Timber.d("$tag: Fetching CGM entries since $since")
 
         return try {
@@ -298,7 +309,8 @@ class NightscoutClient(
     // -------------------------------------------------------------------------
 
     suspend fun getTreatments(since: Instant): NsResult<List<NsTreatment>> {
-        val url = "${baseUrl.trimEnd('/')}/api/v1/treatments.json?find[created_at][\$gte]=${DateTimeFormatter.ISO_INSTANT.format(since)}&count=100"
+        if (baseUrl.isBlank()) return NsResult.Error(message = "Nightscout URL is empty")
+        val url = "$baseUrl/api/v1/treatments.json?find[created_at][\$gte]=${DateTimeFormatter.ISO_INSTANT.format(since)}&count=100"
         Timber.d("$tag: Fetching treatments since $since")
 
         return try {
@@ -364,7 +376,8 @@ class NightscoutClient(
         fats: Double = 0.0,
         glycemicIndex: Double = 0.0
     ): NsResult<Unit> {
-        val url = "${baseUrl.trimEnd('/')}/api/v1/treatments"
+        if (baseUrl.isBlank()) return NsResult.Error(message = "Nightscout URL is empty")
+        val url = "$baseUrl/api/v1/treatments"
         Timber.d("$tag: Posting treatment: carbs=$carbs, insulin=$insulin, glucose=$glucose, proteins=$proteins, fats=$fats, gi=$glycemicIndex")
 
         // ГИ → категория
@@ -439,7 +452,8 @@ class NightscoutClient(
     // -------------------------------------------------------------------------
 
     suspend fun getProfile(): NsResult<NsProfile?> {
-        val url = "${baseUrl.trimEnd('/')}/api/v1/profile.json"
+        if (baseUrl.isBlank()) return NsResult.Error(message = "Nightscout URL is empty")
+        val url = "$baseUrl/api/v1/profile.json"
         Timber.d("$tag: Fetching profile from $url")
 
         return try {
@@ -527,7 +541,8 @@ class NightscoutClient(
      * Конвертация единиц: NS хранит мг/дл, мы используем ммоль/л (÷ 18).
      */
     suspend fun loadSettingsFromProfile(current: AppSettings): NsResult<AppSettings> {
-        val url = "${baseUrl.trimEnd('/')}/api/v1/profile.json"
+        if (baseUrl.isBlank()) return NsResult.Error(message = "Nightscout URL is empty")
+        val url = "$baseUrl/api/v1/profile.json"
         Timber.d("$tag: Loading settings from profile")
 
         return try {
@@ -606,7 +621,8 @@ class NightscoutClient(
      * Конвертация единиц: ммоль/л → мг/дл (× 18).
      */
     suspend fun saveSettingsToProfile(settings: AppSettings): NsResult<Unit> {
-        val url = "${baseUrl.trimEnd('/')}/api/v1/profile"
+        if (baseUrl.isBlank()) return NsResult.Error(message = "Nightscout URL is empty")
+        val url = "$baseUrl/api/v1/profile"
         Timber.d("$tag: Saving settings to NS profile")
 
         return try {
