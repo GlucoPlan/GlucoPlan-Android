@@ -149,18 +149,21 @@ class GlucoseChartViewModel @Inject constructor(
 
         if (treatResult is NsResult.Success) {
             treatResult.data.forEach { t ->
-                when {
-                    // Ручной замер глюкометром
-                    t.eventType == "BG Check" || t.glucoseType == "Finger" -> {
-                        t.glucose?.let { g ->
-                            manualReadings.add(GlucosePoint(
-                                time = t.createdAt,
-                                glucose = g,
-                                isManual = true
-                            ))
-                        }
+                Timber.d("Chart: treatment eventType=${t.eventType} glucoseType=${t.glucoseType} carbs=${t.carbs} insulin=${t.insulin} glucose=${t.glucose}")
+                // Ручной замер глюкометром — из любого treatment где есть glucose и glucoseType
+                if (t.glucoseType == "Finger" || t.glucoseType == "Manual" ||
+                    t.eventType == "BG Check") {
+                    t.glucose?.let { g ->
+                        manualReadings.add(GlucosePoint(
+                            time = t.createdAt,
+                            glucose = g,
+                            isManual = true
+                        ))
                     }
-                    // Болюс / коррекция без еды
+                }
+
+                when {
+                    // Болюс / коррекция (есть инсулин, нет/мало углеводов)
                     t.insulin != null && t.insulin > 0 && (t.carbs == null || t.carbs == 0.0) -> {
                         events.add(ChartEvent.Injection(
                             time = t.createdAt,
@@ -169,14 +172,26 @@ class GlucoseChartViewModel @Inject constructor(
                             isBasal = false
                         ))
                     }
-                    // Приём пищи (с инсулином или без)
-                    t.carbs != null && t.carbs > 0 -> {
-                        // Парсим БЖУ и ГИ из кастомных полей NS
+                    // Приём пищи с инсулином (оба поля заполнены)
+                    t.carbs != null && t.carbs > 0 && t.insulin != null && t.insulin > 0 -> {
                         val gi = t.glycemicIndex ?: ""
                         events.add(ChartEvent.Meal(
                             time = t.createdAt,
                             carbs = t.carbs,
-                            insulin = t.insulin ?: 0.0,
+                            insulin = t.insulin,
+                            proteins = t.proteins ?: 0.0,
+                            fats = t.fats ?: 0.0,
+                            giCategory = gi,
+                            notes = t.notes ?: ""
+                        ))
+                    }
+                    // Только углеводы (инсулин не записан)
+                    t.carbs != null && t.carbs > 0 -> {
+                        val gi = t.glycemicIndex ?: ""
+                        events.add(ChartEvent.Meal(
+                            time = t.createdAt,
+                            carbs = t.carbs,
+                            insulin = 0.0,
                             proteins = t.proteins ?: 0.0,
                             fats = t.fats ?: 0.0,
                             giCategory = gi,
