@@ -142,7 +142,7 @@ fun HistoryScreen(
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState()
         DatePickerDialog(
-            onDismissRequest = { },
+            onDismissRequest = { showDatePicker = false },
             confirmButton = {
                 TextButton(onClick = {
                     datePickerState.selectedDateMillis?.let { ms ->
@@ -150,10 +150,11 @@ fun HistoryScreen(
                             .atZone(ZoneId.systemDefault()).toLocalDate()
                         viewModel.setFilter(date)
                     }
+                    showDatePicker = false
                 }) { Text("ОК") }
             },
             dismissButton = {
-                TextButton(onClick = { }) { Text("Отмена") }
+                TextButton(onClick = { showDatePicker = false }) { Text("Отмена") }
             }
         ) { DatePicker(state = datePickerState) }
     }
@@ -162,7 +163,7 @@ fun HistoryScreen(
         MealDetailSheet(
             meal = meal,
             viewModel = viewModel,
-            onDismiss = { }
+            onDismiss = { selectedMeal = null }
         )
     }
 }
@@ -233,13 +234,13 @@ private fun MealCard(
 
     if (showDeleteDialog) {
         AlertDialog(
-            onDismissRequest = { },
+            onDismissRequest = { showDeleteDialog = false },
             title = { Text("Удалить запись?") },
             confirmButton = {
-                TextButton(onClick = { onDelete(); }) { Text("Удалить") }
+                TextButton(onClick = { onDelete(); showDeleteDialog = false }) { Text("Удалить") }
             },
             dismissButton = {
-                TextButton(onClick = { }) { Text("Отмена") }
+                TextButton(onClick = { showDeleteDialog = false }) { Text("Отмена") }
             }
         )
     }

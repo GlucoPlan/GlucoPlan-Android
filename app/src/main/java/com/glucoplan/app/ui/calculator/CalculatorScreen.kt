@@ -117,7 +117,7 @@ fun CalculatorScreen(
 
     // Dialogs
     if (showAddMenu) {
-        ModalBottomSheet(onDismissRequest = { }) {
+        ModalBottomSheet(onDismissRequest = { showAddMenu = false }) {
             ListItem(
                 headlineContent = { Text("Добавить продукт") },
                 leadingContent = { Icon(Icons.Default.SetMeal, null) },
@@ -139,9 +139,10 @@ fun CalculatorScreen(
     if (showAddProduct) {
         AddComponentDialog(
             type = ComponentDialogType.PRODUCT,
-            onDismiss = { },
+            onDismiss = { showAddProduct = false },
             onAddProduct = { product, weight ->
                 viewModel.addProduct(product, weight)
+                showAddProduct = false
             },
             onAddDish = { _, _ -> }
         )
@@ -150,10 +151,11 @@ fun CalculatorScreen(
     if (showAddDish) {
         AddComponentDialog(
             type = ComponentDialogType.DISH,
-            onDismiss = { },
+            onDismiss = { showAddDish = false },
             onAddProduct = { _, _ -> },
             onAddDish = { dish, weight ->
                 viewModel.addDish(dish, weight)
+                showAddDish = false
             }
         )
     }
@@ -161,25 +163,26 @@ fun CalculatorScreen(
     if (showSaveDialog) {
         SaveMealDialog(
             state = state,
-            onDismiss = { },
+            onDismiss = { showSaveDialog = false },
             onSave = { notes, sendNs ->
                 viewModel.saveMeal(notes, sendNs)
+                showSaveDialog = false
             }
         )
     }
 
     if (showClearDialog) {
         AlertDialog(
-            onDismissRequest = { },
+            onDismissRequest = { showClearDialog = false },
             title = { Text("Очистить список?") },
             text = { Text("Все добавленные компоненты будут удалены.") },
             confirmButton = {
-                TextButton(onClick = { viewModel.clearAll(); }) {
+                TextButton(onClick = { viewModel.clearAll(); showClearDialog = false }) {
                     Text("Очистить")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { }) { Text("Отмена") }
+                TextButton(onClick = { showClearDialog = false }) { Text("Отмена") }
             }
         )
     }
@@ -187,8 +190,8 @@ fun CalculatorScreen(
     if (showGlucoseDialog) {
         GlucoseInputDialog(
             current = state.currentGlucose,
-            onDismiss = { },
-            onConfirm = { viewModel.updateGlucose(it); }
+            onDismiss = { showGlucoseDialog = false },
+            onConfirm = { viewModel.updateGlucose(it); showGlucoseDialog = false }
         )
     }
 }

@@ -162,7 +162,7 @@ fun DishesScreen(
         DishEditScreen(
             dish = editDish,
             viewModel = viewModel,
-            onDismiss = { }
+            onDismiss = { showAddDish = false; editDish = null }
         )
     }
 }
