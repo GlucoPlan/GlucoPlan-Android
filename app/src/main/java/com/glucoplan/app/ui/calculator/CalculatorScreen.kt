@@ -19,9 +19,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.glucoplan.app.domain.model.CalcComponent
-import com.glucoplan.app.domain.model.DishWithIngredients
-import com.glucoplan.app.domain.model.Product
 import com.glucoplan.app.ui.theme.GlucoseColor
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -120,12 +117,11 @@ fun CalculatorScreen(
 
     // Dialogs
     if (showAddMenu) {
-        ModalBottomSheet(onDismissRequest = { showAddMenu = false }) {
+        ModalBottomSheet(onDismissRequest = { }) {
             ListItem(
                 headlineContent = { Text("Добавить продукт") },
                 leadingContent = { Icon(Icons.Default.SetMeal, null) },
                 modifier = Modifier.clickable {
-                    showAddMenu = false
                     showAddProduct = true
                 }
             )
@@ -133,7 +129,6 @@ fun CalculatorScreen(
                 headlineContent = { Text("Добавить блюдо") },
                 leadingContent = { Icon(Icons.Default.Restaurant, null) },
                 modifier = Modifier.clickable {
-                    showAddMenu = false
                     showAddDish = true
                 }
             )
@@ -144,10 +139,9 @@ fun CalculatorScreen(
     if (showAddProduct) {
         AddComponentDialog(
             type = ComponentDialogType.PRODUCT,
-            onDismiss = { showAddProduct = false },
+            onDismiss = { },
             onAddProduct = { product, weight ->
                 viewModel.addProduct(product, weight)
-                showAddProduct = false
             },
             onAddDish = { _, _ -> }
         )
@@ -156,11 +150,10 @@ fun CalculatorScreen(
     if (showAddDish) {
         AddComponentDialog(
             type = ComponentDialogType.DISH,
-            onDismiss = { showAddDish = false },
+            onDismiss = { },
             onAddProduct = { _, _ -> },
             onAddDish = { dish, weight ->
                 viewModel.addDish(dish, weight)
-                showAddDish = false
             }
         )
     }
@@ -168,26 +161,25 @@ fun CalculatorScreen(
     if (showSaveDialog) {
         SaveMealDialog(
             state = state,
-            onDismiss = { showSaveDialog = false },
+            onDismiss = { },
             onSave = { notes, sendNs ->
                 viewModel.saveMeal(notes, sendNs)
-                showSaveDialog = false
             }
         )
     }
 
     if (showClearDialog) {
         AlertDialog(
-            onDismissRequest = { showClearDialog = false },
+            onDismissRequest = { },
             title = { Text("Очистить список?") },
             text = { Text("Все добавленные компоненты будут удалены.") },
             confirmButton = {
-                TextButton(onClick = { viewModel.clearAll(); showClearDialog = false }) {
+                TextButton(onClick = { viewModel.clearAll(); }) {
                     Text("Очистить")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showClearDialog = false }) { Text("Отмена") }
+                TextButton(onClick = { }) { Text("Отмена") }
             }
         )
     }
@@ -195,8 +187,8 @@ fun CalculatorScreen(
     if (showGlucoseDialog) {
         GlucoseInputDialog(
             current = state.currentGlucose,
-            onDismiss = { showGlucoseDialog = false },
-            onConfirm = { viewModel.updateGlucose(it); showGlucoseDialog = false }
+            onDismiss = { },
+            onConfirm = { viewModel.updateGlucose(it); }
         )
     }
 }

@@ -79,8 +79,6 @@ class GlucoRepository @Inject constructor(
 
     suspend fun deleteDish(id: Long) = dishDao.deleteById(id)
 
-    // ─── Meals ───────────────────────────────────────────────────────────────
-    fun getMealsFlow(): Flow<List<Meal>> = mealDao.getAllFlow()
 
     suspend fun getMealsByDate(date: LocalDate?): List<Meal> {
         return if (date != null) {
@@ -164,11 +162,6 @@ class GlucoRepository @Inject constructor(
     }
 
     // ─── Insulin Injections (IOB) ─────────────────────────────────────────────
-
-    /**
-     * Get all injections
-     */
-    fun getInjectionsFlow(): Flow<List<InsulinInjection>> = injectionDao.getAllFlow()
 
     /**
      * Get injections from the last N hours

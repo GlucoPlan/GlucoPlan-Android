@@ -1,6 +1,5 @@
 package com.glucoplan.app.domain.model
 
-import java.time.Instant
 import timber.log.Timber
 
 /**
@@ -86,9 +85,7 @@ object BolusRecommender {
         var reasoning = ""
 
         // ─── 1. Calculate carb curves ───
-        val carbCurves = CarbCurveCalculator.fromComponents(components)
         val aggregatedCurves = CarbCurveCalculator.aggregateFromComponents(components)
-        val proteinCurve = CarbCurveCalculator.proteinFromComponents(components)
 
         val totalCarbs = aggregatedCurves.totalCarbs
         val totalProtein = components.sumOf { it.proteinsInPortion }

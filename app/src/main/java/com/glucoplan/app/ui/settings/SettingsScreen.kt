@@ -15,7 +15,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
-import android.content.Context
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -400,7 +399,7 @@ fun SettingsScreen(
                         }
                     }
                 },
-                modifier = if (state.updateAvailable) Modifier.clickable { showUpdateDialog = true } else Modifier
+                modifier = if (state.updateAvailable) Modifier.clickable { } else Modifier
             )
             ListItem(
                 headlineContent  = { Text("GitHub") },

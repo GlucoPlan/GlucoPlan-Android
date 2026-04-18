@@ -61,7 +61,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.glucoplan.app.domain.model.Meal
 import com.glucoplan.app.ui.calculator.CalculatorViewModel
 import com.glucoplan.app.ui.theme.GlucoseColor
-import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -136,15 +135,7 @@ fun HistoryScreen(
                     MealCard(
                         meal = meal,
                         onDelete = { viewModel.delete(meal) },
-                        onTap = { selectedMeal = meal },
-                        onCopyToCalc = {
-                            scope.launch {
-                                val comps = viewModel.buildCalcComponents(meal.id)
-                                calcViewModel.loadFromHistory(comps)
-                                snackbarHostState.showSnackbar("Загружено в калькулятор")
-                                onMealCopied()
-                            }
-                        }
+                        onTap = { selectedMeal = meal }
                     )
                 }
             }
@@ -154,7 +145,7 @@ fun HistoryScreen(
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState()
         DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
+            onDismissRequest = { },
             confirmButton = {
                 TextButton(onClick = {
                     datePickerState.selectedDateMillis?.let { ms ->
@@ -162,11 +153,10 @@ fun HistoryScreen(
                             .atZone(ZoneId.systemDefault()).toLocalDate()
                         viewModel.setFilter(date)
                     }
-                    showDatePicker = false
                 }) { Text("ОК") }
             },
             dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("Отмена") }
+                TextButton(onClick = { }) { Text("Отмена") }
             }
         ) { DatePicker(state = datePickerState) }
     }
@@ -175,7 +165,7 @@ fun HistoryScreen(
         MealDetailSheet(
             meal = meal,
             viewModel = viewModel,
-            onDismiss = { selectedMeal = null }
+            onDismiss = { }
         )
     }
 }
@@ -185,8 +175,7 @@ fun HistoryScreen(
 private fun MealCard(
     meal: Meal,
     onDelete: () -> Unit,
-    onTap: () -> Unit,
-    onCopyToCalc: () -> Unit
+    onTap: () -> Unit
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
     val dismissState = rememberSwipeToDismissBoxState(
@@ -247,13 +236,13 @@ private fun MealCard(
 
     if (showDeleteDialog) {
         AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
+            onDismissRequest = { },
             title = { Text("Удалить запись?") },
             confirmButton = {
-                TextButton(onClick = { onDelete(); showDeleteDialog = false }) { Text("Удалить") }
+                TextButton(onClick = { onDelete(); }) { Text("Удалить") }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) { Text("Отмена") }
+                TextButton(onClick = { }) { Text("Отмена") }
             }
         )
     }

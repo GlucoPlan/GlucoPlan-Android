@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.glucoplan.app.data.db.MealComponentRow
 import com.glucoplan.app.data.repository.GlucoRepository
 import com.glucoplan.app.domain.model.CalcComponent
-import com.glucoplan.app.domain.model.ComponentType
 import com.glucoplan.app.domain.model.Meal
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

@@ -1,7 +1,6 @@
 package com.glucoplan.app.domain.calculator
 
 import com.glucoplan.app.domain.model.CalcComponent
-import com.glucoplan.app.domain.model.ComponentType
 import kotlin.math.*
 
 object InsulinCalculator {

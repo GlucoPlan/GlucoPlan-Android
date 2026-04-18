@@ -171,16 +171,16 @@ fun ProductsScreen(
     if (showAddDialog || editProduct != null) {
         ProductEditDialog(
             product = editProduct,
-            onDismiss = { showAddDialog = false; editProduct = null },
-            onSave = { viewModel.save(it); showAddDialog = false; editProduct = null },
-            onDelete = editProduct?.let { p -> { viewModel.delete(p.id); editProduct = null } }
+            onDismiss = { },
+            onSave = { viewModel.save(it); },
+            onDelete = editProduct?.let { p -> { viewModel.delete(p.id); } }
         )
     }
 
     if (showImportDialog && importUri != null) {
         ImportDialog(
-            onDismiss = { showImportDialog = false },
-            onConfirm = { mode -> viewModel.importCsv(context, importUri!!, mode); showImportDialog = false }
+            onDismiss = { },
+            onConfirm = { mode -> viewModel.importCsv(context, importUri!!, mode); }
         )
     }
 }

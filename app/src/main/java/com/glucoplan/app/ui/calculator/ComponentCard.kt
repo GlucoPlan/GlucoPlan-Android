@@ -140,14 +140,14 @@ fun ComponentCard(
 
     if (showDeleteDialog) {
         AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
+            onDismissRequest = { },
             title = { Text("Удалить?") },
             text = { Text("Удалить «${component.name}» из списка?") },
             confirmButton = {
-                TextButton(onClick = { onRemove(); showDeleteDialog = false }) { Text("Удалить") }
+                TextButton(onClick = { onRemove(); }) { Text("Удалить") }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) { Text("Отмена") }
+                TextButton(onClick = { }) { Text("Отмена") }
             }
         )
     }

@@ -284,10 +284,9 @@ fun DishEditScreen(
     if (showAddIngredient) {
         AddIngredientDialog(
             productsViewModel = productsViewModel,
-            onDismiss = { showAddIngredient = false },
+            onDismiss = { },
             onAdd = { ing ->
                 ingredients = (ingredients + ing).toMutableList()
-                showAddIngredient = false
             }
         )
     }
