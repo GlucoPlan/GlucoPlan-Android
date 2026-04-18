@@ -148,15 +148,4 @@ class FileLogTree(
         }
     }
 
-    /**
-     * Get the current log file path for sharing
-     */
-    fun getCurrentLogFilePath(): String? = currentLogFile?.absolutePath
-
-    /**
-     * Get all log files
-     */
-    fun getLogFiles(): List<File> {
-        return logDir.listFiles()?.filter { it.name.endsWith(".log") }?.sortedByDescending { it.lastModified() } ?: emptyList()
-    }
 }

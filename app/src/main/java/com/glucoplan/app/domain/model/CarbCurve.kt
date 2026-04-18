@@ -174,15 +174,6 @@ data class ProteinCurve(
         return totalRise * curve
     }
 
-    fun generatePoints(stepMinutes: Int = 5): List<Pair<Double, Double>> {
-        val points = mutableListOf<Pair<Double, Double>>()
-        var t = 0.0
-        while (t <= durationMinutes) {
-            points.add(t to getGlucoseRiseAt(t))
-            t += stepMinutes
-        }
-        return points
-    }
 }
 
 /**

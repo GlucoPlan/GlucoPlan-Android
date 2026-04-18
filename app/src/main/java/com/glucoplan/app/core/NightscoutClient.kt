@@ -27,12 +27,6 @@ sealed class NsResult<out T> {
     data class Success<T>(val data: T) : NsResult<T>()
     data class Error(val code: Int? = null, val message: String, val exception: Exception? = null) : NsResult<Nothing>()
 
-    val isSuccess: Boolean get() = this is Success
-    val isFailure: Boolean get() = this is Error
-
-    fun getOrNull(): T? = (this as? Success)?.data
-    fun errorOrNull(): Error? = this as? Error
-
     inline fun <R> map(transform: (T) -> R): NsResult<R> = when (this) {
         is Success -> Success(transform(data))
         is Error -> this
@@ -525,8 +519,6 @@ class NightscoutClient(
             val sensMgDl = profileData.optDouble("sens", -1.0)
             val sensitivity = if (sensMgDl > 0) sensMgDl / 18.0 else current.sensitivity
 
-            // I:C ratio (carbratio) → НС хранит г углеводов на 1 ед инсулина
-            val carbratio = profileData.optDouble("carbratio", -1.0)
 
             // Целевые значения
             val targetLowMgDl = profileData.optJSONArray("target_low")

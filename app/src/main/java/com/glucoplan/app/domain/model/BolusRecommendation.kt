@@ -77,8 +77,7 @@ object BolusRecommender {
         currentGlucose: Double,
         cgmReading: CgmReading?,
         iobState: IobState,
-        settings: AppSettings,
-        previousMeals: List<Meal> = emptyList()
+        settings: AppSettings
     ): BolusRecommendation {
         val warnings = mutableListOf<String>()
         val adjustments = mutableListOf<DoseAdjustment>()
@@ -206,8 +205,6 @@ object BolusRecommender {
 
         // ─── 11. Generate reasoning ───
         reasoning = buildReasoning(
-            foodDose = foodDose,
-            correctionDose = correctionDose,
             iobReduction = iobReduction,
             totalDose = roundedDose,
             timing = timing,
@@ -323,8 +320,6 @@ object BolusRecommender {
     }
 
     private fun buildReasoning(
-        foodDose: Double,
-        correctionDose: Double,
         iobReduction: Double,
         totalDose: Double,
         timing: BolusTiming,

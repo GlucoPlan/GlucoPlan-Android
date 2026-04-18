@@ -59,7 +59,6 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.glucoplan.app.domain.model.Meal
-import com.glucoplan.app.ui.calculator.CalculatorViewModel
 import com.glucoplan.app.ui.theme.GlucoseColor
 import java.time.Instant
 import java.time.LocalDateTime
@@ -71,15 +70,13 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
-    viewModel: HistoryViewModel = hiltViewModel(),
-    calcViewModel: CalculatorViewModel = hiltViewModel(),
-    onMealCopied: () -> Unit = {}
+    viewModel: HistoryViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var showDatePicker by remember { mutableStateOf(false) }
     var selectedMeal by remember { mutableStateOf<Meal?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
+    rememberCoroutineScope()
 
     LaunchedEffect(Unit) { viewModel.load() }
 

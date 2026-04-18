@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -33,6 +34,7 @@ fun SettingsScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val uriHandler = LocalUriHandler.current
+    val context = LocalContext.current
 
     if (state.loading) {
         Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator() }
@@ -41,18 +43,18 @@ fun SettingsScreen(
 
     val s = state.settings
 
-    var carbsPerXe  by remember(s.carbsPerXe)        { mutableStateOf(s.carbsPerXe.toString()) }
-    var carbCoeff   by remember(s.carbCoefficient)    { mutableStateOf(s.carbCoefficient.toString()) }
-    var sensitivity by remember(s.sensitivity)        { mutableStateOf(s.sensitivity.toString()) }
-    var targetMin   by remember(s.targetGlucoseMin)   { mutableStateOf(s.targetGlucoseMin.toString()) }
-    var target      by remember(s.targetGlucose)      { mutableStateOf(s.targetGlucose.toString()) }
-    var targetMax   by remember(s.targetGlucoseMax)   { mutableStateOf(s.targetGlucoseMax.toString()) }
-    var insulinStep by remember(s.insulinStep)        { mutableStateOf(s.insulinStep.toString()) }
-    var basalDose   by remember(s.basalDose)          { mutableStateOf(s.basalDose.toString()) }
-    var nsUrl       by remember(s.nsUrl)              { mutableStateOf(s.nsUrl) }
-    var nsSecret    by remember(s.nsApiSecret)        { mutableStateOf(s.nsApiSecret) }
-    var nsEnabled   by remember(s.nsEnabled)          { mutableStateOf(s.nsEnabled) }
-    var showSecret      by remember { mutableStateOf(false) }
+    var carbsPerXe       by remember(s.carbsPerXe)       { mutableStateOf(s.carbsPerXe.toString()) }
+    var carbCoeff        by remember(s.carbCoefficient)   { mutableStateOf(s.carbCoefficient.toString()) }
+    var sensitivity      by remember(s.sensitivity)       { mutableStateOf(s.sensitivity.toString()) }
+    var targetMin        by remember(s.targetGlucoseMin)  { mutableStateOf(s.targetGlucoseMin.toString()) }
+    var target           by remember(s.targetGlucose)     { mutableStateOf(s.targetGlucose.toString()) }
+    var targetMax        by remember(s.targetGlucoseMax)  { mutableStateOf(s.targetGlucoseMax.toString()) }
+    var insulinStep      by remember(s.insulinStep)       { mutableStateOf(s.insulinStep.toString()) }
+    var basalDose        by remember(s.basalDose)         { mutableStateOf(s.basalDose.toString()) }
+    var nsUrl            by remember(s.nsUrl)             { mutableStateOf(s.nsUrl) }
+    var nsSecret         by remember(s.nsApiSecret)       { mutableStateOf(s.nsApiSecret) }
+    var nsEnabled        by remember(s.nsEnabled)         { mutableStateOf(s.nsEnabled) }
+    var showSecret       by remember { mutableStateOf(false) }
     var showUpdateDialog by remember { mutableStateOf(false) }
 
     fun buildSettings() = s.copy(
@@ -73,9 +75,8 @@ fun SettingsScreen(
         onDispose { viewModel.save(buildSettings()) }
     }
 
-    // Показываем снэкбар при результате синхронизации
     val snackbarHostState = remember { SnackbarHostState() }
-    // Проверяем обновления при каждом открытии вкладки
+
     LaunchedEffect(Unit) { viewModel.checkForUpdates() }
 
     LaunchedEffect(state.nsSyncResult) {
@@ -88,6 +89,40 @@ fun SettingsScreen(
             snackbarHostState.showSnackbar(msg)
             viewModel.clearNsSyncResult()
         }
+    }
+
+    // ── Диалог обновления ─────────────────────────────────────────────────────
+    if (showUpdateDialog && state.latestVersion != null) {
+        AlertDialog(
+            onDismissRequest = { showUpdateDialog = false },
+            title = { Text("Доступно обновление") },
+            text = {
+                Column {
+                    Text("Текущая версия: ${BuildConfig.VERSION_NAME}")
+                    Text("Новая версия: ${state.latestVersion}")
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Скачать и установить GlucoPlan ${state.latestVersion}?",
+                        color = MaterialTheme.colorScheme.outline,
+                        fontSize = 13.sp
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showUpdateDialog = false
+                    state.latestApkUrl?.let { url ->
+                        downloadAndInstallApk(context, url, state.latestVersion!!)
+                    }
+                }) { Text("Обновить") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showUpdateDialog = false
+                    viewModel.clearUpdateState()
+                }) { Text("Не сейчас") }
+            }
+        )
     }
 
     Scaffold(
@@ -111,11 +146,9 @@ fun SettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-
             // ═══════════════════════════════════════════════════════
             // БЛОК 1 — NIGHTSCOUT
             // ═══════════════════════════════════════════════════════
-
             SectionHeader("Nightscout / CGM")
 
             ListItem(
@@ -133,7 +166,6 @@ fun SettingsScreen(
 
             AnimatedVisibility(visible = nsEnabled) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-
                     BlurSaveField(
                         label = "URL сервера",
                         value = nsUrl,
@@ -161,7 +193,6 @@ fun SettingsScreen(
                         singleLine = true
                     )
 
-                    // Кнопка проверки соединения
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         OutlinedButton(onClick = {
                             viewModel.save(buildSettings())
@@ -201,7 +232,6 @@ fun SettingsScreen(
 
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
-                    // Кнопки синхронизации профиля
                     Text(
                         "Синхронизация параметров лечения",
                         style = MaterialTheme.typography.bodySmall,
@@ -211,7 +241,6 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        // Загрузить из NS
                         OutlinedButton(
                             onClick = {
                                 viewModel.save(buildSettings())
@@ -229,7 +258,6 @@ fun SettingsScreen(
                             Text("Читать из NS", fontSize = 13.sp)
                         }
 
-                        // Сохранить в NS
                         Button(
                             onClick = {
                                 viewModel.save(buildSettings())
@@ -261,9 +289,8 @@ fun SettingsScreen(
             }
 
             // ═══════════════════════════════════════════════════════
-            // БЛОК 2 — ПАРАМЕТРЫ ЛЕЧЕНИЯ (синхронизируются с NS)
+            // БЛОК 2 — ПАРАМЕТРЫ ЛЕЧЕНИЯ
             // ═══════════════════════════════════════════════════════
-
             SectionHeader("Параметры лечения")
             Text(
                 "Эти настройки синхронизируются с Nightscout",
@@ -347,9 +374,8 @@ fun SettingsScreen(
             }
 
             // ═══════════════════════════════════════════════════════
-            // БЛОК 3 — НАСТРОЙКИ ПРИЛОЖЕНИЯ (только локально)
+            // БЛОК 3 — НАСТРОЙКИ ПРИЛОЖЕНИЯ
             // ═══════════════════════════════════════════════════════
-
             SectionHeader("Настройки приложения")
             Text(
                 "Эти настройки хранятся только на устройстве",
@@ -373,12 +399,17 @@ fun SettingsScreen(
             // ═══════════════════════════════════════════════════════
             // О ПРОГРАММЕ
             // ═══════════════════════════════════════════════════════
-
             SectionHeader("О программе")
             ListItem(
                 headlineContent = { Text("Версия") },
                 supportingContent = if (state.updateAvailable) {
-                    { Text("Доступна ${state.latestVersion}", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp) }
+                    {
+                        Text(
+                            "Доступна ${state.latestVersion} — нажмите для обновления",
+                            color = MaterialTheme.colorScheme.primary,
+                            fontSize = 12.sp
+                        )
+                    }
                 } else null,
                 trailingContent = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -391,15 +422,20 @@ fun SettingsScreen(
                             state.updateAvailable -> {
                                 Text(BuildConfig.VERSION_NAME, color = MaterialTheme.colorScheme.outline)
                                 Spacer(Modifier.width(8.dp))
-                                Icon(Icons.Default.SystemUpdate, null,
+                                Icon(
+                                    Icons.Default.SystemUpdate, null,
                                     tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp))
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
                             else -> Text(BuildConfig.VERSION_NAME)
                         }
                     }
                 },
-                modifier = if (state.updateAvailable) Modifier.clickable { } else Modifier
+                modifier = if (state.updateAvailable)
+                    Modifier.clickable { showUpdateDialog = true }
+                else
+                    Modifier
             )
             ListItem(
                 headlineContent  = { Text("GitHub") },
@@ -435,7 +471,7 @@ fun SettingsScreen(
     }
 }
 
-// ─── Вспомогательные компоненты ──────────────────────────────────────────────
+// ─── Вспомогательные компоненты ───────────────────────────────────────────────
 
 @Composable
 private fun SectionHeader(text: String) {
@@ -512,8 +548,6 @@ private fun SettingsDropdown(
 
 private fun downloadAndInstallApk(context: android.content.Context, url: String, version: String) {
     val apkName = "GlucoPlan_$version.apk"
-    // Сохраняем в getExternalFilesDir — туда у нас есть доступ без WRITE_EXTERNAL_STORAGE
-    // и этот путь объявлен в file_paths.xml как external-files-path/Downloads/
     val destDir = context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS)
         ?: return
     val destFile = java.io.File(destDir, apkName)
@@ -532,34 +566,29 @@ private fun downloadAndInstallApk(context: android.content.Context, url: String,
             as android.app.DownloadManager
     val downloadId = dm.enqueue(request)
 
-    // BroadcastReceiver — слушаем завершение загрузки
     val receiver = object : android.content.BroadcastReceiver() {
         override fun onReceive(ctx: android.content.Context, intent: android.content.Intent) {
             val id = intent.getLongExtra(android.app.DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
             if (id != downloadId) return
-
             ctx.unregisterReceiver(this)
 
-            // Проверяем статус загрузки
             val query = android.app.DownloadManager.Query().setFilterById(downloadId)
-            val cursor = dm.query(query)
-            val success = cursor?.use { c ->
+            val success = dm.query(query)?.use { c ->
                 c.moveToFirst() && c.getInt(
                     c.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_STATUS)
                 ) == android.app.DownloadManager.STATUS_SUCCESSFUL
             } ?: false
 
             if (!success) {
-                android.widget.Toast.makeText(ctx, "Ошибка загрузки APK", android.widget.Toast.LENGTH_LONG).show()
+                android.widget.Toast.makeText(
+                    ctx, "Ошибка загрузки APK", android.widget.Toast.LENGTH_LONG
+                ).show()
                 return
             }
 
-            // Выдаём URI через FileProvider и запускаем установщик
             try {
                 val apkUri = androidx.core.content.FileProvider.getUriForFile(
-                    ctx,
-                    "${ctx.packageName}.fileprovider",
-                    destFile
+                    ctx, "${ctx.packageName}.fileprovider", destFile
                 )
                 val installIntent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
                     setDataAndType(apkUri, "application/vnd.android.package-archive")
@@ -568,7 +597,9 @@ private fun downloadAndInstallApk(context: android.content.Context, url: String,
                 }
                 ctx.startActivity(installIntent)
             } catch (e: Exception) {
-                android.widget.Toast.makeText(ctx, "Не удалось открыть установщик: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+                android.widget.Toast.makeText(
+                    ctx, "Не удалось открыть установщик: ${e.message}", android.widget.Toast.LENGTH_LONG
+                ).show()
             }
         }
     }

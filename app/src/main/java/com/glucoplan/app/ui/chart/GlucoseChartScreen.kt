@@ -25,8 +25,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.time.temporal.ChronoUnit
-import kotlin.math.abs
+
 
 // Цвета для зон сахара
 private val ColorHypo    = Color(0xFFE53935)   // < 3.9
@@ -49,7 +48,6 @@ private fun glucoseColor(g: Double) = when {
 
 private val timeFmt  = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault())
 private val dateFmt  = DateTimeFormatter.ofPattern("dd MMM").withZone(ZoneId.systemDefault())
-private val fullFmt  = DateTimeFormatter.ofPattern("HH:mm  dd.MM").withZone(ZoneId.systemDefault())
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

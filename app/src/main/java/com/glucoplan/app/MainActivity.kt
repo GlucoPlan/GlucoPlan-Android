@@ -15,13 +15,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import com.glucoplan.app.ui.calculator.CalculatorScreen
-import com.glucoplan.app.ui.chart.GlucoseChartScreen
 import com.glucoplan.app.ui.calculator.CalculatorUiState
 import com.glucoplan.app.ui.calculator.CalculatorViewModel
 import com.glucoplan.app.ui.dishes.DishesScreen
@@ -37,7 +35,6 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
 import android.content.Context
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -188,13 +185,6 @@ fun MainNavHost() {
             }
             composable(Screen.History.route) {
                 HistoryScreen(
-                    calcViewModel = calcViewModel,
-                    onMealCopied = {
-                        navController.navigate(Screen.Calculator.route) {
-                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                            launchSingleTop = true
-                        }
-                    }
                 )
             }
             composable(Screen.Products.route) {

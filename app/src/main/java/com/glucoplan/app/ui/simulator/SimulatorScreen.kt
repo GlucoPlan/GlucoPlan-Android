@@ -1,7 +1,6 @@
 package com.glucoplan.app.ui.simulator
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -19,7 +18,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.glucoplan.app.domain.model.BolusTiming
 import com.glucoplan.app.domain.model.Confidence
 import com.glucoplan.app.domain.model.InsulinProfiles
 import com.glucoplan.app.ui.calculator.CalculatorUiState
@@ -100,7 +98,7 @@ fun SimulatorScreen(
 
             // ─── Recommendations ───
             state.recommendation?.let { recommendation ->
-                RecommendationCard(recommendation, state.settings.targetGlucoseMin, state.settings.targetGlucoseMax)
+                RecommendationCard(recommendation)
             }
 
             // ─── Legend ───
@@ -291,9 +289,7 @@ private fun ResultsCard(state: SimulatorUiState) {
 
 @Composable
 private fun RecommendationCard(
-    recommendation: com.glucoplan.app.domain.model.BolusRecommendation,
-    targetMin: Double,
-    targetMax: Double
+    recommendation: com.glucoplan.app.domain.model.BolusRecommendation
 ) {
     val cardColor = when (recommendation.confidence) {
         Confidence.HIGH -> MaterialTheme.colorScheme.primaryContainer

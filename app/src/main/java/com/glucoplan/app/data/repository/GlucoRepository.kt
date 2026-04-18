@@ -44,11 +44,6 @@ class GlucoRepository @Inject constructor(
     suspend fun savePan(p: Pan) = if (p.id == 0L) panDao.insert(p) else { panDao.update(p); p.id }
     suspend fun deletePan(id: Long) = panDao.deleteById(id)
 
-    // ─── Dishes ──────────────────────────────────────────────────────────────
-    fun getDishesFlow(): Flow<List<Dish>> = dishDao.getAllFlow()
-    suspend fun searchDishes(q: String) = if (q.isBlank()) dishDao.getAll() else dishDao.search(q)
-    suspend fun getDish(id: Long) = dishDao.getById(id)
-
     suspend fun getDishWithIngredients(dishId: Long): DishWithIngredients? {
         val dish = dishDao.getById(dishId) ?: return null
         val ingredients = dishDao.getIngredients(dishId).map { it.toDomainModel() }
@@ -152,15 +147,6 @@ class GlucoRepository @Inject constructor(
         ))
     }
 
-    suspend fun logNsSync(mealId: Long?, status: String, message: String) {
-        settingsDao.insertSyncLog(NsSyncLog(
-            mealId = mealId,
-            syncedAt = java.time.Instant.now().toString(),
-            status = status,
-            message = message
-        ))
-    }
-
     // ─── Insulin Injections (IOB) ─────────────────────────────────────────────
 
     /**
@@ -180,27 +166,11 @@ class GlucoRepository @Inject constructor(
     }
 
     /**
-     * Get basal injections from the last N hours
-     */
-    suspend fun getRecentBasalInjections(hours: Int = 24): List<InsulinInjection> {
-        val since = Instant.now().minus(hours.toLong(), ChronoUnit.HOURS)
-        return injectionDao.getBasalSince(since.toString())
-    }
-
-    /**
      * Save an injection
      */
     suspend fun saveInjection(injection: InsulinInjection): Long {
         Timber.d("Saving injection: ${injection.insulinType} ${injection.dose}U at ${injection.injectedAt}")
         return injectionDao.insert(injection)
-    }
-
-    /**
-     * Save multiple injections (e.g., from Nightscout sync)
-     */
-    suspend fun saveInjections(injections: List<InsulinInjection>) {
-        Timber.d("Saving ${injections.size} injections")
-        injectionDao.insertAll(injections)
     }
 
     /**
@@ -221,11 +191,4 @@ class GlucoRepository @Inject constructor(
         return IobCalculator.calculate(injections)
     }
 
-    /**
-     * Calculate IOB for bolus insulins only
-     */
-    suspend fun calculateBolusIob(hours: Int = 6): IobState {
-        val injections = getRecentBolusInjections(hours)
-        return IobCalculator.calculate(injections)
-    }
 }
