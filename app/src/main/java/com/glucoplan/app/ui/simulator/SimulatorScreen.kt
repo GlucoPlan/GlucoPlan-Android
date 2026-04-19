@@ -265,21 +265,21 @@ private fun ResultsCard(state: SimulatorUiState) {
 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Пик", fontSize = 11.sp, color = MaterialTheme.colorScheme.outline)
-                Text("${"%.1f".format(state.peakGlucose)}", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = peakColor)
+                Text("${"%.1f".format(state.peakGlucose)}", fontWeight = FontWeight.ExtraBold, fontSize = 24.sp, color = peakColor)
                 Text("ммоль/л", fontSize = 10.sp, color = MaterialTheme.colorScheme.outline)
                 Text("через ${state.minutesToPeak} мин", fontSize = 10.sp, color = MaterialTheme.colorScheme.outline)
             }
 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Через 6ч", fontSize = 11.sp, color = MaterialTheme.colorScheme.outline)
-                Text("${"%.1f".format(state.finalGlucose)}", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = finalColor)
+                Text("${"%.1f".format(state.finalGlucose)}", fontWeight = FontWeight.ExtraBold, fontSize = 24.sp, color = finalColor)
                 Text("ммоль/л", fontSize = 10.sp, color = MaterialTheme.colorScheme.outline)
             }
 
             if (state.iobState.totalIob > 0.1) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("Активный инс.", fontSize = 11.sp, color = MaterialTheme.colorScheme.outline)
-                    Text("${"%.1f".format(state.iobState.totalIob)}", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = MaterialTheme.colorScheme.tertiary)
+                    Text("${"%.1f".format(state.iobState.totalIob)}", fontWeight = FontWeight.ExtraBold, fontSize = 24.sp, color = MaterialTheme.colorScheme.tertiary)
                     Text("ед", fontSize = 10.sp, color = MaterialTheme.colorScheme.outline)
                 }
             }
@@ -382,7 +382,7 @@ private fun RecommendationCard(
 private fun LegendCard() {
     Surface(
         tonalElevation = 1.dp,
-        shape = MaterialTheme.shapes.small
+        shape = MaterialTheme.shapes.medium
     ) {
         Row(
             modifier = Modifier

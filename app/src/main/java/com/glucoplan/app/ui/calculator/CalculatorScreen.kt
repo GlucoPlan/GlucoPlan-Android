@@ -85,17 +85,17 @@ fun CalculatorScreen(
                         Surface(
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.primaryContainer,
-                            modifier = Modifier.size(120.dp)
+                            modifier = Modifier.size(96.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     Icons.Default.RestaurantMenu, null,
-                                    modifier = Modifier.size(56.dp),
+                                    modifier = Modifier.size(48.dp),
                                     tint = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             }
                         }
-                        Spacer(Modifier.height(24.dp))
+                        Spacer(Modifier.height(16.dp))
                         Text(
                             "Добавьте продукты или блюда",
                             style = MaterialTheme.typography.titleMedium,
@@ -262,7 +262,7 @@ fun CgmWidget(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .padding(horizontal = 12.dp, vertical = 4.dp),
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.08f)),
         border = BorderStroke(1.dp, color.copy(alpha = 0.35f))
@@ -270,7 +270,7 @@ fun CgmWidget(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (reading == null) {
@@ -325,9 +325,8 @@ fun TotalsPanel(state: CalculatorUiState) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp)
+                .padding(horizontal = 16.dp, vertical = 6.dp)
         ) {
-            // Главное: УВ, ХЕ, ГН
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -335,15 +334,8 @@ fun TotalsPanel(state: CalculatorUiState) {
                 TotalStat("УВ", "%.1f г".format(state.totalCarbs), MaterialTheme.colorScheme.primary, labelSp = 11, valueSp = 15)
                 TotalStat("ХЕ", "%.1f".format(state.breadUnits), MaterialTheme.colorScheme.secondary, labelSp = 11, valueSp = 15)
                 TotalStat("ГН", "%.1f".format(state.glycemicLoad), MaterialTheme.colorScheme.tertiary, labelSp = 11, valueSp = 15)
-            }
-            Spacer(Modifier.height(6.dp))
-            // Дополнительно: Б, Ж, Ккал
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                TotalStat("Белки", "%.1f г".format(state.totalProteins), null, labelSp = 10, valueSp = 12)
-                TotalStat("Жиры", "%.1f г".format(state.totalFats), null, labelSp = 10, valueSp = 12)
+                TotalStat("Белки", "%.0f г".format(state.totalProteins), null, labelSp = 10, valueSp = 12)
+                TotalStat("Жиры", "%.0f г".format(state.totalFats), null, labelSp = 10, valueSp = 12)
                 TotalStat("Ккал", "%.0f".format(state.totalCalories), null, labelSp = 10, valueSp = 12)
             }
         }
@@ -384,14 +376,14 @@ fun InsulinPanel(
         ),
         modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
             // Drag handle
             Box(modifier = Modifier
                 .align(Alignment.CenterHorizontally)
                 .width(48.dp).height(5.dp)
                 .background(MaterialTheme.colorScheme.outlineVariant, CircleShape)
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
 
             // Header row
             Row(verticalAlignment = Alignment.CenterVertically) {

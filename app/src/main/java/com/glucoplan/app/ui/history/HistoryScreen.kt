@@ -243,7 +243,7 @@ private fun MealCard(
         },
         enableDismissFromStartToEnd = false
     ) {
-        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp).clickable { onTap() }) {
+        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp).clickable { onTap() }) {
             ListItem(
                 headlineContent = {
                     Text(dt, fontWeight = FontWeight.SemiBold)

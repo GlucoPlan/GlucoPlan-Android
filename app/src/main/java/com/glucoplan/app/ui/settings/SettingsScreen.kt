@@ -393,6 +393,7 @@ fun SettingsScreen(
             SectionSubHeader("Кастрюли")
             ListItem(
                 headlineContent = { Text("Управление кастрюлями") },
+                leadingContent = { Icon(Icons.Default.Kitchen, null) },
                 trailingContent = { Icon(Icons.Default.ChevronRight, null) },
                 modifier = Modifier.clickable { onNavigateToPans() }
             )
@@ -458,15 +459,25 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.errorContainer,
                 shape = MaterialTheme.shapes.medium
             ) {
-                Text(
-                    "Приложение является вспомогательным инструментом и не заменяет " +
-                    "рекомендации лечащего врача. Все коэффициенты подбираются совместно " +
-                    "с эндокринологом. Вся ответственность за последствия его медицинского " +
-                            "применения приложения лежит только на Вас.",
+                Row(
                     modifier = Modifier.padding(12.dp),
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onErrorContainer
-                )
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Warning, null,
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                    Text(
+                        "Приложение является вспомогательным инструментом и не заменяет " +
+                        "рекомендации лечащего врача. Все коэффициенты подбираются совместно " +
+                        "с эндокринологом. Вся ответственность за последствия медицинского " +
+                        "применения приложения лежит только на Вас.",
+                        fontSize = 12.sp,
+                        lineHeight = 18.sp,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
             }
             Spacer(Modifier.height(32.dp))
         }

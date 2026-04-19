@@ -149,6 +149,7 @@ fun MainNavHost() {
     var simState by remember { mutableStateOf<CalculatorUiState?>(null) }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             if (currentRoute in bottomScreens.map { it.route }) {
                 NavigationBar {
