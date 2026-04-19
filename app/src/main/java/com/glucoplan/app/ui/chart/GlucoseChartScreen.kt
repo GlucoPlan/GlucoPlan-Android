@@ -27,23 +27,23 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 
-// Цвета для зон сахара
-private val ColorHypo    = Color(0xFFE53935)   // < 3.9
-private val ColorLow     = Color(0xFFFF9800)   // 3.9–4.9
-private val ColorInRange = Color(0xFF43A047)   // 5.0–10.0
-private val ColorHigh    = Color(0xFFFF9800)   // 10.1–13.9
-private val ColorHyper   = Color(0xFFE53935)   // > 14
+// Цвета для зон сахара (совпадают с Theme.kt)
+private val ColorHypo    = Color(0xFFE53935)   // < 3.9  — красный
+private val ColorLow     = Color(0xFFFF9800)   // 3.9–5.0 — оранжевый
+private val ColorInRange = Color(0xFF43A047)   // 5.0–10.0 — зелёный
+private val ColorHigh    = Color(0xFFE65100)   // 10.0–14  — тёмно-оранжевый
+private val ColorHyper   = Color(0xFFB71C1C)   // > 14     — тёмно-красный
 private val ColorMeal    = Color(0xFF2196F3)   // еда
 private val ColorInsulin = Color(0xFF9C27B0)   // инсулин
 private val ColorManual  = Color(0xFF795548)   // глюкометр
 private val ColorGrid    = Color(0x22000000)
 
 private fun glucoseColor(g: Double) = when {
-    g < 3.9  -> ColorHypo
-    g < 5.0  -> ColorLow
+    g < 3.9   -> ColorHypo
+    g < 5.0   -> ColorLow
     g <= 10.0 -> ColorInRange
-    g <= 13.9 -> ColorHigh
-    else     -> ColorHyper
+    g <= 14.0 -> ColorHigh
+    else      -> ColorHyper
 }
 
 private val timeFmt  = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault())
@@ -98,11 +98,23 @@ fun GlucoseChartScreen(
                     Box(Modifier.fillMaxSize(), Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier.padding(32.dp)) {
-                            Icon(Icons.Default.WifiOff, null,
-                                Modifier.size(64.dp),
-                                tint = MaterialTheme.colorScheme.error)
-                            Spacer(Modifier.height(16.dp))
-                            Text(state.error!!, color = MaterialTheme.colorScheme.error)
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.errorContainer,
+                                modifier = Modifier.size(120.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Default.WifiOff, null,
+                                        modifier = Modifier.size(56.dp),
+                                        tint = MaterialTheme.colorScheme.onErrorContainer)
+                                }
+                            }
+                            Spacer(Modifier.height(24.dp))
+                            Text("Нет соединения с Nightscout",
+                                style = MaterialTheme.typography.titleMedium)
+                            Spacer(Modifier.height(8.dp))
+                            Text(state.error!!, color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall)
                             Spacer(Modifier.height(16.dp))
                             Button(onClick = { viewModel.load() }) { Text("Повторить") }
                         }
@@ -110,8 +122,24 @@ fun GlucoseChartScreen(
                 }
                 state.points.isEmpty() -> {
                     Box(Modifier.fillMaxSize(), Alignment.Center) {
-                        Text("Нет данных CGM за последние 48 часов",
-                            color = MaterialTheme.colorScheme.outline)
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier.size(120.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Default.Timeline, null,
+                                        modifier = Modifier.size(56.dp),
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                                }
+                            }
+                            Spacer(Modifier.height(24.dp))
+                            Text("Нет данных CGM", style = MaterialTheme.typography.titleMedium)
+                            Spacer(Modifier.height(8.dp))
+                            Text("Данные появятся после синхронизации с Nightscout",
+                                color = MaterialTheme.colorScheme.outline)
+                        }
                     }
                 }
                 else -> {
@@ -170,8 +198,10 @@ private fun TooltipPanel(tooltip: ChartTooltip?, settings: com.glucoplan.app.dom
     val height = 72.dp
     Surface(
         tonalElevation = 3.dp,
+        shape = MaterialTheme.shapes.medium,
         modifier = Modifier
             .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 4.dp)
             .height(height)
     ) {
         if (tooltip == null) {
