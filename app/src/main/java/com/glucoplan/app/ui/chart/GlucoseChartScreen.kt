@@ -101,7 +101,7 @@ fun GlucoseChartScreen(
                             Surface(
                                 shape = CircleShape,
                                 color = MaterialTheme.colorScheme.errorContainer,
-                                modifier = Modifier.size(120.dp)
+                                modifier = Modifier.size(96.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(Icons.Default.WifiOff, null,
@@ -109,7 +109,7 @@ fun GlucoseChartScreen(
                                         tint = MaterialTheme.colorScheme.onErrorContainer)
                                 }
                             }
-                            Spacer(Modifier.height(24.dp))
+                            Spacer(Modifier.height(16.dp))
                             Text("Нет соединения с Nightscout",
                                 style = MaterialTheme.typography.titleMedium)
                             Spacer(Modifier.height(8.dp))
@@ -126,7 +126,7 @@ fun GlucoseChartScreen(
                             Surface(
                                 shape = CircleShape,
                                 color = MaterialTheme.colorScheme.primaryContainer,
-                                modifier = Modifier.size(120.dp)
+                                modifier = Modifier.size(96.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(Icons.Default.Timeline, null,
@@ -134,7 +134,7 @@ fun GlucoseChartScreen(
                                         tint = MaterialTheme.colorScheme.onPrimaryContainer)
                                 }
                             }
-                            Spacer(Modifier.height(24.dp))
+                            Spacer(Modifier.height(16.dp))
                             Text("Нет данных CGM", style = MaterialTheme.typography.titleMedium)
                             Spacer(Modifier.height(8.dp))
                             Text("Данные появятся после синхронизации с Nightscout",

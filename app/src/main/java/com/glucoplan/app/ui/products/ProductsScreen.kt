@@ -146,7 +146,7 @@ fun ProductsScreen(
                         Surface(
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.primaryContainer,
-                            modifier = Modifier.size(120.dp)
+                            modifier = Modifier.size(96.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
@@ -156,7 +156,7 @@ fun ProductsScreen(
                                 )
                             }
                         }
-                        Spacer(Modifier.height(24.dp))
+                        Spacer(Modifier.height(16.dp))
                         Text("Список продуктов пуст", style = MaterialTheme.typography.titleMedium)
                         Spacer(Modifier.height(8.dp))
                         Text("Добавьте продукт или импортируйте CSV", color = MaterialTheme.colorScheme.outline)

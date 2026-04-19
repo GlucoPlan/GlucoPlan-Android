@@ -126,7 +126,7 @@ fun DishesScreen(
                         Surface(
                             shape = androidx.compose.foundation.shape.CircleShape,
                             color = MaterialTheme.colorScheme.primaryContainer,
-                            modifier = Modifier.size(120.dp)
+                            modifier = Modifier.size(96.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
@@ -136,7 +136,7 @@ fun DishesScreen(
                                 )
                             }
                         }
-                        Spacer(Modifier.height(24.dp))
+                        Spacer(Modifier.height(16.dp))
                         Text("Блюда не добавлены", style = MaterialTheme.typography.titleMedium)
                         Spacer(Modifier.height(8.dp))
                         Text("Нажмите + чтобы создать блюдо", color = MaterialTheme.colorScheme.outline)
