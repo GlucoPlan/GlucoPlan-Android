@@ -23,7 +23,7 @@ class MealDaoTest {
         mealDao = mockk()
     }
 
-    private fun meal(id: Long, datetime: String = "2023-10-27T12:00:00") = Meal(
+    private fun приём(id: Long, datetime: String = "2023-10-27T12:00:00") = Meal(
         id = id,
         datetime = datetime,
         insulinDose = 0.0,
@@ -37,7 +37,7 @@ class MealDaoTest {
     )
 
     @Test
-    fun `getAllFlow empty database check`() = runTest {
+    fun `getAllFlow - пустая база данных возвращает пустой список`() = runTest {
         every { mealDao.getAllFlow() } returns flowOf(emptyList())
 
         mealDao.getAllFlow().test {
@@ -47,13 +47,13 @@ class MealDaoTest {
     }
 
     @Test
-    fun `getAllFlow sorting order validation`() = runTest {
-        val meals = listOf(
-            meal(1, "2023-10-27T14:00:00"),
-            meal(2, "2023-10-27T12:00:00"),
-            meal(3, "2023-10-26T10:00:00")
+    fun `getAllFlow - приёмы отсортированы по убыванию даты`() = runTest {
+        val приёмы = listOf(
+            приём(1, "2023-10-27T14:00:00"),
+            приём(2, "2023-10-27T12:00:00"),
+            приём(3, "2023-10-26T10:00:00")
         )
-        every { mealDao.getAllFlow() } returns flowOf(meals)
+        every { mealDao.getAllFlow() } returns flowOf(приёмы)
 
         mealDao.getAllFlow().test {
             val items = awaitItem()
@@ -65,12 +65,12 @@ class MealDaoTest {
     }
 
     @Test
-    fun `getAllFlow reactive update check`() = runTest {
-        val initial = listOf(meal(1, "2023-10-27T12:00:00"))
-        val updated = listOf(meal(1, "2023-10-27T12:00:00"), meal(2, "2023-10-28T08:00:00"))
+    fun `getAllFlow - поток автоматически обновляется при добавлении записи`() = runTest {
+        val начальный = listOf(приём(1, "2023-10-27T12:00:00"))
+        val обновлённый = listOf(приём(1, "2023-10-27T12:00:00"), приём(2, "2023-10-28T08:00:00"))
         every { mealDao.getAllFlow() } returns flow {
-            emit(initial)
-            emit(updated)
+            emit(начальный)
+            emit(обновлённый)
         }
 
         mealDao.getAllFlow().test {
@@ -81,117 +81,117 @@ class MealDaoTest {
     }
 
     @Test
-    fun `getByDate exact prefix match`() = runTest {
-        val meals = listOf(
-            meal(1, "2023-10-27T10:00:00"),
-            meal(2, "2023-10-27T18:00:00")
+    fun `getByDate - точный префикс даты возвращает все приёмы за день`() = runTest {
+        val приёмы = listOf(
+            приём(1, "2023-10-27T10:00:00"),
+            приём(2, "2023-10-27T18:00:00")
         )
-        coEvery { mealDao.getByDate("2023-10-27") } returns meals
+        coEvery { mealDao.getByDate("2023-10-27") } returns приёмы
 
-        val result = mealDao.getByDate("2023-10-27")
-        assertThat(result).hasSize(2)
-        assertThat(result.all { it.datetime.startsWith("2023-10-27") }).isTrue()
+        val результат = mealDao.getByDate("2023-10-27")
+        assertThat(результат).hasSize(2)
+        assertThat(результат.all { it.datetime.startsWith("2023-10-27") }).isTrue()
     }
 
     @Test
-    fun `getByDate partial prefix month match`() = runTest {
-        val meals = listOf(
-            meal(1, "2023-10-01T10:00:00"),
-            meal(2, "2023-10-15T12:00:00"),
-            meal(3, "2023-10-31T18:00:00")
+    fun `getByDate - префикс месяца возвращает все приёмы за месяц`() = runTest {
+        val приёмы = listOf(
+            приём(1, "2023-10-01T10:00:00"),
+            приём(2, "2023-10-15T12:00:00"),
+            приём(3, "2023-10-31T18:00:00")
         )
-        coEvery { mealDao.getByDate("2023-10") } returns meals
+        coEvery { mealDao.getByDate("2023-10") } returns приёмы
 
-        val result = mealDao.getByDate("2023-10")
-        assertThat(result).hasSize(3)
-        assertThat(result.all { it.datetime.startsWith("2023-10") }).isTrue()
+        val результат = mealDao.getByDate("2023-10")
+        assertThat(результат).hasSize(3)
+        assertThat(результат.all { it.datetime.startsWith("2023-10") }).isTrue()
     }
 
     @Test
-    fun `getByDate empty prefix check`() = runTest {
-        val meals = listOf(meal(1), meal(2), meal(3))
-        coEvery { mealDao.getByDate("") } returns meals
+    fun `getByDate - пустой префикс возвращает все записи`() = runTest {
+        val приёмы = listOf(приём(1), приём(2), приём(3))
+        coEvery { mealDao.getByDate("") } returns приёмы
 
-        val result = mealDao.getByDate("")
-        assertThat(result).hasSize(3)
+        val результат = mealDao.getByDate("")
+        assertThat(результат).hasSize(3)
     }
 
     @Test
-    fun `getByDate no match returns empty`() = runTest {
+    fun `getByDate - несуществующая дата возвращает пустой список`() = runTest {
         coEvery { mealDao.getByDate("2099-01-01") } returns emptyList()
 
-        val result = mealDao.getByDate("2099-01-01")
-        assertThat(result).isEmpty()
+        val результат = mealDao.getByDate("2099-01-01")
+        assertThat(результат).isEmpty()
     }
 
     @Test
-    fun `getAll standard retrieval check`() = runTest {
-        val meals = listOf(meal(1), meal(2), meal(3))
-        coEvery { mealDao.getAll() } returns meals
+    fun `getAll - возвращает все записи из базы данных`() = runTest {
+        val приёмы = listOf(приём(1), приём(2), приём(3))
+        coEvery { mealDao.getAll() } returns приёмы
 
-        val result = mealDao.getAll()
-        assertThat(result).hasSize(3)
-        assertThat(result).containsExactlyElementsIn(meals)
+        val результат = mealDao.getAll()
+        assertThat(результат).hasSize(3)
+        assertThat(результат).containsExactlyElementsIn(приёмы)
     }
 
     @Test
-    fun `getAll sorting consistency`() = runTest {
-        val meals = listOf(
-            meal(1, "2023-10-27T18:00:00"),
-            meal(2, "2023-10-27T12:00:00"),
-            meal(3, "2023-10-26T10:00:00")
+    fun `getAll - список отсортирован по убыванию даты`() = runTest {
+        val приёмы = listOf(
+            приём(1, "2023-10-27T18:00:00"),
+            приём(2, "2023-10-27T12:00:00"),
+            приём(3, "2023-10-26T10:00:00")
         )
-        coEvery { mealDao.getAll() } returns meals
+        coEvery { mealDao.getAll() } returns приёмы
 
-        val result = mealDao.getAll()
-        for (i in 0 until result.size - 1) {
-            assertThat(result[i].datetime).isGreaterThan(result[i + 1].datetime)
+        val результат = mealDao.getAll()
+        for (i in 0 until результат.size - 1) {
+            assertThat(результат[i].datetime).isGreaterThan(результат[i + 1].datetime)
         }
     }
 
     @Test
-    fun `getById existing record retrieval`() = runTest {
-        val expected = meal(42, "2023-10-27T12:00:00")
-        coEvery { mealDao.getById(42L) } returns expected
+    fun `getById - возвращает существующую запись с корректными полями`() = runTest {
+        val ожидаемый = приём(42, "2023-10-27T12:00:00")
+        coEvery { mealDao.getById(42L) } returns ожидаемый
 
-        val result = mealDao.getById(42L)
-        assertThat(result).isEqualTo(expected)
-        assertThat(result?.id).isEqualTo(42L)
-        assertThat(result?.datetime).isEqualTo("2023-10-27T12:00:00")
+        val результат = mealDao.getById(42L)
+        assertThat(результат).isEqualTo(ожидаемый)
+        assertThat(результат?.id).isEqualTo(42L)
+        assertThat(результат?.datetime).isEqualTo("2023-10-27T12:00:00")
     }
 
     @Test
-    fun `getById non existent record check`() = runTest {
+    fun `getById - несуществующий ID возвращает null`() = runTest {
         coEvery { mealDao.getById(999L) } returns null
 
-        val result = mealDao.getById(999L)
-        assertThat(result).isNull()
+        val результат = mealDao.getById(999L)
+        assertThat(результат).isNull()
     }
 
     @Test
-    fun `insert successful record check`() = runTest {
-        val newMeal = meal(0, "2023-10-27T12:00:00")
-        coEvery { mealDao.insert(newMeal) } returns 1L
+    fun `insert - успешная вставка возвращает сгенерированный ID строки`() = runTest {
+        val новыйПриём = приём(0, "2023-10-27T12:00:00")
+        coEvery { mealDao.insert(новыйПриём) } returns 1L
 
-        val rowId = mealDao.insert(newMeal)
+        val rowId = mealDao.insert(новыйПриём)
         assertThat(rowId).isEqualTo(1L)
         assertThat(rowId).isGreaterThan(0L)
     }
 
     @Test
-    fun `insertComponents multiple records success`() = runTest {
-        val components = listOf(
+    fun `insertComponents - список компонентов успешно сохраняется`() = runTest {
+        val компоненты = listOf(
             MealComponent(mealId = 1L, componentType = "product", productId = 1L, servingWeight = 100.0),
             MealComponent(mealId = 1L, componentType = "product", productId = 2L, servingWeight = 200.0)
         )
-        coEvery { mealDao.insertComponents(components) } returns Unit
+        coEvery { mealDao.insertComponents(компоненты) } returns Unit
 
-        mealDao.insertComponents(components)
-        coVerify { mealDao.insertComponents(components) }
+        mealDao.insertComponents(компоненты)
+        coVerify { mealDao.insertComponents(компоненты) }
     }
 
     @Test
-    fun `insertComponents empty list handling`() = runTest {
+    fun `insertComponents - пустой список не вызывает ошибку`() = runTest {
         coEvery { mealDao.insertComponents(emptyList()) } returns Unit
 
         mealDao.insertComponents(emptyList())
@@ -199,19 +199,19 @@ class MealDaoTest {
     }
 
     @Test
-    fun `deleteById existing record removal`() = runTest {
+    fun `deleteById - запись удаляется и getById возвращает null`() = runTest {
         coEvery { mealDao.deleteById(1L) } returns Unit
-        coEvery { mealDao.getById(1L) } returnsMany listOf(meal(1L), null)
+        coEvery { mealDao.getById(1L) } returnsMany listOf(приём(1L), null)
 
-        val before = mealDao.getById(1L)
-        assertThat(before).isNotNull()
+        val до = mealDao.getById(1L)
+        assertThat(до).isNotNull()
         mealDao.deleteById(1L)
-        val after = mealDao.getById(1L)
-        assertThat(after).isNull()
+        val после = mealDao.getById(1L)
+        assertThat(после).isNull()
     }
 
     @Test
-    fun `deleteById non existent record check`() = runTest {
+    fun `deleteById - удаление несуществующей записи не вызывает ошибку`() = runTest {
         coEvery { mealDao.deleteById(999L) } returns Unit
 
         mealDao.deleteById(999L)
@@ -219,30 +219,30 @@ class MealDaoTest {
     }
 
     @Test
-    fun `getComponents relational join validation`() = runTest {
-        val component = MealComponentRow(
+    fun `getComponents - возвращает данные JOIN с именем продукта и углеводами`() = runTest {
+        val компонент = MealComponentRow(
             id = 1L,
             mealId = 1L,
             componentType = "product",
             productId = 10L,
             dishId = null,
             servingWeight = 150.0,
-            productName = "Apple",
+            productName = "Яблоко",
             productCarbs = 14.0,
             dishName = null
         )
-        coEvery { mealDao.getComponents(1L) } returns listOf(component)
+        coEvery { mealDao.getComponents(1L) } returns listOf(компонент)
 
-        val result = mealDao.getComponents(1L)
-        assertThat(result).hasSize(1)
-        assertThat(result[0].productName).isEqualTo("Apple")
-        assertThat(result[0].productCarbs).isEqualTo(14.0)
-        assertThat(result[0].dishName).isNull()
+        val результат = mealDao.getComponents(1L)
+        assertThat(результат).hasSize(1)
+        assertThat(результат[0].productName).isEqualTo("Яблоко")
+        assertThat(результат[0].productCarbs).isEqualTo(14.0)
+        assertThat(результат[0].dishName).isNull()
     }
 
     @Test
-    fun `getComponents left join null handling`() = runTest {
-        val component = MealComponentRow(
+    fun `getComponents - LEFT JOIN с null-полями возвращает компонент без исключения`() = runTest {
+        val компонент = MealComponentRow(
             id = 1L,
             mealId = 1L,
             componentType = "product",
@@ -253,35 +253,35 @@ class MealDaoTest {
             productCarbs = null,
             dishName = null
         )
-        coEvery { mealDao.getComponents(1L) } returns listOf(component)
+        coEvery { mealDao.getComponents(1L) } returns listOf(компонент)
 
-        val result = mealDao.getComponents(1L)
-        assertThat(result).hasSize(1)
-        assertThat(result[0].productName).isNull()
-        assertThat(result[0].dishName).isNull()
-        assertThat(result[0].displayName).isEqualTo("?")
+        val результат = mealDao.getComponents(1L)
+        assertThat(результат).hasSize(1)
+        assertThat(результат[0].productName).isNull()
+        assertThat(результат[0].dishName).isNull()
+        assertThat(результат[0].displayName).isEqualTo("?")
     }
 
     @Test
-    fun `getComponents invalid mealId check`() = runTest {
+    fun `getComponents - несуществующий mealId возвращает пустой список`() = runTest {
         coEvery { mealDao.getComponents(999L) } returns emptyList()
 
-        val result = mealDao.getComponents(999L)
-        assertThat(result).isEmpty()
+        val результат = mealDao.getComponents(999L)
+        assertThat(результат).isEmpty()
     }
 
     @Test
-    fun `insert meal with duplicate ID conflict`() = runTest {
-        val duplicate = meal(1L, "2023-10-27T12:00:00")
-        coEvery { mealDao.insert(duplicate) } throws RuntimeException("UNIQUE constraint failed: meals.id")
+    fun `insert - вставка с дублирующимся ID вызывает исключение конфликта`() = runTest {
+        val дубликат = приём(1L, "2023-10-27T12:00:00")
+        coEvery { mealDao.insert(дубликат) } throws RuntimeException("UNIQUE constraint failed: meals.id")
 
-        var caught: RuntimeException? = null
+        var пойманное: RuntimeException? = null
         try {
-            mealDao.insert(duplicate)
+            mealDao.insert(дубликат)
         } catch (e: RuntimeException) {
-            caught = e
+            пойманное = e
         }
-        assertThat(caught).isNotNull()
-        assertThat(caught?.message).contains("UNIQUE constraint failed")
+        assertThat(пойманное).isNotNull()
+        assertThat(пойманное?.message).contains("UNIQUE constraint failed")
     }
 }
