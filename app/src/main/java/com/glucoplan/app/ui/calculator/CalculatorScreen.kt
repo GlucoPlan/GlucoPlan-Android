@@ -141,7 +141,7 @@ fun CalculatorScreen(
             Text(
                 "Добавить в расчёт",
                 style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(horizontal = 16.dp, bottom = 8.dp)
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
             )
             HorizontalDivider()
             Spacer(Modifier.height(8.dp))

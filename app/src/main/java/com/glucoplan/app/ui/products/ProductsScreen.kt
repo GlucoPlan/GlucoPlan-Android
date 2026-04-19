@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Add
@@ -40,6 +41,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -141,9 +143,23 @@ fun ProductsScreen(
             if (products.isEmpty()) {
                 Box(Modifier.fillMaxSize(), Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.NoFood, null, Modifier.size(64.dp), tint = MaterialTheme.colorScheme.outline)
-                        Spacer(Modifier.height(16.dp))
-                        Text("Добавьте продукты или импортируйте CSV", color = MaterialTheme.colorScheme.outline)
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.size(120.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Default.NoFood, null,
+                                    modifier = Modifier.size(56.dp),
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(24.dp))
+                        Text("Список продуктов пуст", style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.height(8.dp))
+                        Text("Добавьте продукт или импортируйте CSV", color = MaterialTheme.colorScheme.outline)
                     }
                 }
             } else {
@@ -157,7 +173,10 @@ fun ProductsScreen(
                                     fontSize = 12.sp)
                             },
                             trailingContent = {
-                                Text("%.0f\nккал".format(product.calories), fontSize = 12.sp)
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text("%.0f".format(product.calories), fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                                    Text("ккал", fontSize = 10.sp, color = MaterialTheme.colorScheme.outline)
+                                }
                             },
                             modifier = Modifier.clickable { editProduct = product }
                         )
