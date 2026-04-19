@@ -37,6 +37,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -91,9 +92,23 @@ fun PansScreen(
         if (pans.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.Kitchen, null, Modifier.size(64.dp), tint = MaterialTheme.colorScheme.outline)
-                    Spacer(Modifier.height(16.dp))
-                    Text("Добавьте первую кастрюлю", color = MaterialTheme.colorScheme.outline)
+                    Surface(
+                        shape = androidx.compose.foundation.shape.CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier.size(120.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.Kitchen, null,
+                                modifier = Modifier.size(56.dp),
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(24.dp))
+                    Text("Кастрюли не добавлены", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(8.dp))
+                    Text("Нажмите + чтобы добавить", color = MaterialTheme.colorScheme.outline)
                 }
             }
         } else {

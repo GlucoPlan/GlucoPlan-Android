@@ -123,15 +123,29 @@ fun DishesScreen(
             if (dishes.isEmpty()) {
                 Box(Modifier.fillMaxSize(), Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.SoupKitchen, null, Modifier.size(64.dp), tint = MaterialTheme.colorScheme.outline)
-                        Spacer(Modifier.height(16.dp))
-                        Text("Создайте первое блюдо", color = MaterialTheme.colorScheme.outline)
+                        Surface(
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.size(120.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Default.SoupKitchen, null,
+                                    modifier = Modifier.size(56.dp),
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(24.dp))
+                        Text("Блюда не добавлены", style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.height(8.dp))
+                        Text("Нажмите + чтобы создать блюдо", color = MaterialTheme.colorScheme.outline)
                     }
                 }
             } else {
                 LazyColumn {
                     items(dishes, key = { it.dish.id }) { dish ->
-                        Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
+                        Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)) {
                             ListItem(
                                 headlineContent = { Text(dish.dish.name, fontWeight = FontWeight.Bold) },
                                 supportingContent = {
