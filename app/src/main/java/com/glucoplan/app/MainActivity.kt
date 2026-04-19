@@ -7,6 +7,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -14,6 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -121,7 +125,7 @@ fun DisclaimerScreen(onAccepted: () -> Unit) {
 }
 
 sealed class Screen(val route: String, val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
-    object Calculator : Screen("calculator", "Калькулятор", Icons.Default.Calculate)
+    object Calculator : Screen("calculator", "Расчёт",      Icons.Default.Calculate)
     object Chart      : Screen("chart",      "График",      Icons.Default.Timeline)
     object History    : Screen("history",    "История",     Icons.Default.History)
     object Products   : Screen("products",   "Продукты",    Icons.Default.SetMeal)
@@ -149,10 +153,21 @@ fun MainNavHost() {
             if (currentRoute in bottomScreens.map { it.route }) {
                 NavigationBar {
                     bottomScreens.forEach { screen ->
+                        val selected = currentRoute == screen.route
+                        val scale by animateFloatAsState(
+                            targetValue = if (selected) 1.18f else 1.0f,
+                            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                            label = "navIconScale"
+                        )
                         NavigationBarItem(
-                            icon = { Icon(screen.icon, screen.label) },
-                            label = { Text(screen.label) },
-                            selected = currentRoute == screen.route,
+                            icon = {
+                                Icon(
+                                    screen.icon, screen.label,
+                                    modifier = Modifier.scale(scale)
+                                )
+                            },
+                            label = { Text(screen.label, maxLines = 1) },
+                            selected = selected,
                             onClick = {
                                 navController.navigate(screen.route) {
                                     popUpTo(navController.graph.findStartDestination().id) { saveState = true }

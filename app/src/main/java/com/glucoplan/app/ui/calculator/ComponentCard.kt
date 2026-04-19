@@ -4,6 +4,7 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -12,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
@@ -24,8 +26,8 @@ import com.glucoplan.app.domain.model.CalcComponent
 import com.glucoplan.app.domain.model.ComponentType
 import com.glucoplan.app.domain.model.DishWithIngredients
 import com.glucoplan.app.domain.model.Product
-import com.glucoplan.app.ui.products.ProductsViewModel
 import com.glucoplan.app.ui.dishes.DishesViewModel
+import com.glucoplan.app.ui.products.ProductsViewModel
 
 // ─── ComponentCard ────────────────────────────────────────────────────────────
 
@@ -44,7 +46,6 @@ fun ComponentCard(
     var isFocused by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
 
-    // Sync weight text when component changes externally (e.g. AdjustPortion)
     LaunchedEffect(component.servingWeight) {
         if (!isFocused) {
             weightText = "%.1f".format(component.servingWeight)
@@ -53,10 +54,8 @@ fun ComponentCard(
 
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
-            if (value == SwipeToDismissBoxValue.EndToStart) {
-                showDeleteDialog = true
-            }
-            false // Don't dismiss automatically, show dialog first
+            if (value == SwipeToDismissBoxValue.EndToStart) showDeleteDialog = true
+            false
         }
     )
 
@@ -66,6 +65,8 @@ fun ComponentCard(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                    .clip(MaterialTheme.shapes.medium)
                     .background(MaterialTheme.colorScheme.error)
                     .padding(end = 16.dp),
                 contentAlignment = Alignment.CenterEnd
@@ -78,9 +79,9 @@ fun ComponentCard(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 4.dp),
+                .padding(horizontal = 12.dp, vertical = 6.dp),
             colors = if (component.type == ComponentType.DISH)
-                CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f))
+                CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.25f))
             else CardDefaults.cardColors()
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
@@ -90,7 +91,18 @@ fun ComponentCard(
                         onCheckedChange = { onToggleAdjust() },
                         modifier = Modifier.size(24.dp)
                     )
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Icon(
+                        imageVector = if (component.type == ComponentType.DISH) Icons.Default.Restaurant
+                                      else Icons.Default.Grain,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = if (component.type == ComponentType.DISH)
+                            MaterialTheme.colorScheme.secondary
+                        else
+                            MaterialTheme.colorScheme.outline
+                    )
+                    Spacer(Modifier.width(6.dp))
                     Text(
                         component.name,
                         modifier = Modifier.weight(1f),
@@ -127,7 +139,7 @@ fun ComponentCard(
                     )
                 }
                 Spacer(Modifier.height(4.dp))
-                Row(modifier = Modifier.padding(start = 32.dp)) {
+                Row(modifier = Modifier.padding(start = 36.dp)) {
                     InfoChip("УВ: %.1f г".format(component.carbsInPortion), MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.width(8.dp))
                     InfoChip("ГН: %.1f".format(component.glycemicLoad), MaterialTheme.colorScheme.secondary)
@@ -153,15 +165,20 @@ fun ComponentCard(
     }
 }
 
+// ─── InfoChip ─────────────────────────────────────────────────────────────────
+
 @Composable
-fun InfoChip(label: String, color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.outline) {
+fun InfoChip(
+    label: String,
+    color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.outline
+) {
     Surface(
         color = color.copy(alpha = 0.12f),
-        shape = MaterialTheme.shapes.extraSmall
+        shape = RoundedCornerShape(50)
     ) {
         Text(
             label,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
             fontSize = 11.sp,
             color = color,
             fontWeight = FontWeight.SemiBold
@@ -186,7 +203,6 @@ fun AddComponentDialog(
     var selectedDish by remember { mutableStateOf<DishWithIngredients?>(null) }
     val hasSelection = selectedProduct != null || selectedDish != null
 
-    // Search results
     val productResults by productsViewModel.searchResults.collectAsState()
     val dishResults by dishesViewModel.searchResults.collectAsState()
 
