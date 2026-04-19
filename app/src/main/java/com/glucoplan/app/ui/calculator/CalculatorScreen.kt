@@ -5,12 +5,14 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -80,13 +82,31 @@ fun CalculatorScreen(
             if (state.components.isEmpty()) {
                 Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.RestaurantMenu, null,
-                            modifier = Modifier.size(72.dp),
-                            tint = MaterialTheme.colorScheme.outline)
-                        Spacer(Modifier.height(16.dp))
-                        Text("Добавьте продукты или блюда\nнажав кнопку +",
-                            color = MaterialTheme.colorScheme.outline,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.size(120.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Default.RestaurantMenu, null,
+                                    modifier = Modifier.size(56.dp),
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(24.dp))
+                        Text(
+                            "Добавьте продукты или блюда",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            "Нажмите кнопку + внизу экрана",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.outline
+                        )
                     }
                 }
             } else {
@@ -115,22 +135,55 @@ fun CalculatorScreen(
         }
     }
 
-    // Dialogs
+    // ─── Диалог добавления (BottomSheet) ───────────────────────────────────────
     if (showAddMenu) {
         ModalBottomSheet(onDismissRequest = { showAddMenu = false }) {
+            Text(
+                "Добавить в расчёт",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 16.dp, bottom = 8.dp)
+            )
+            HorizontalDivider()
+            Spacer(Modifier.height(8.dp))
             ListItem(
-                headlineContent = { Text("Добавить продукт") },
-                leadingContent = { Icon(Icons.Default.SetMeal, null) },
-                modifier = Modifier.clickable {
-                    showAddProduct = true
-                }
+                headlineContent = { Text("Продукт") },
+                supportingContent = { Text("Из базы продуктов", style = MaterialTheme.typography.bodySmall) },
+                leadingContent = {
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.SetMeal, null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                },
+                modifier = Modifier.clickable { showAddProduct = true; showAddMenu = false }
             )
             ListItem(
-                headlineContent = { Text("Добавить блюдо") },
-                leadingContent = { Icon(Icons.Default.Restaurant, null) },
-                modifier = Modifier.clickable {
-                    showAddDish = true
-                }
+                headlineContent = { Text("Блюдо") },
+                supportingContent = { Text("Составное блюдо по рецепту", style = MaterialTheme.typography.bodySmall) },
+                leadingContent = {
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.Restaurant, null,
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                },
+                modifier = Modifier.clickable { showAddDish = true; showAddMenu = false }
             )
             Spacer(Modifier.height(16.dp))
         }
@@ -196,6 +249,8 @@ fun CalculatorScreen(
     }
 }
 
+// ─── CgmWidget ────────────────────────────────────────────────────────────────
+
 @Composable
 fun CgmWidget(
     reading: com.glucoplan.app.domain.model.CgmReading?,
@@ -204,50 +259,62 @@ fun CgmWidget(
     val color = if (reading == null || reading.isStale) MaterialTheme.colorScheme.outline
     else GlucoseColor(reading.glucose, 3.9, 10.0)
 
-    Surface(color = color.copy(alpha = 0.1f)) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.08f)),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.35f))
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (reading == null) {
-                // Show spinner while first fetch is in progress (no error yet),
-                // or error icon only after a real failure.
                 if (error != null) {
                     Icon(Icons.Default.WifiOff, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(8.dp))
                     Text("Нет соединения с CGM", color = MaterialTheme.colorScheme.error)
                 } else {
-                    androidx.compose.material3.CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                     Spacer(Modifier.width(8.dp))
                     Text("Загрузка CGM…", color = MaterialTheme.colorScheme.outline)
                 }
             } else {
                 Text(
                     "%.1f".format(reading.glucose),
-                    fontWeight = FontWeight.Bold, fontSize = 20.sp, color = color
+                    fontWeight = FontWeight.ExtraBold, fontSize = 28.sp, color = color
                 )
                 Spacer(Modifier.width(4.dp))
-                Text(reading.directionArrow, fontSize = 20.sp, color = color)
+                Text(reading.directionArrow, fontSize = 22.sp, color = color)
                 Spacer(Modifier.width(8.dp))
                 if (reading.isStale) {
-                    Text("(устаревшее)", fontSize = 12.sp, color = Color.Gray)
+                    Text("(устаревшее)", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 } else {
                     reading.forecast20min?.let {
-                        Text("→ %.1f через 20 мин".format(it), fontSize = 12.sp)
+                        Text(
+                            "→ %.1f через 20 мин".format(it),
+                            fontSize = 12.sp,
+                            color = color.copy(alpha = 0.7f)
+                        )
                     }
                 }
                 Spacer(Modifier.weight(1f))
                 val diffMin = java.time.Instant.now().epochSecond / 60 - reading.time.epochSecond / 60
                 Text(
                     if (diffMin < 1) "только что" else "$diffMin мин назад",
-                    fontSize = 11.sp, color = Color.Gray
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
     }
 }
+
+// ─── TotalsPanel ──────────────────────────────────────────────────────────────
 
 @Composable
 fun TotalsPanel(state: CalculatorUiState) {
@@ -255,31 +322,45 @@ fun TotalsPanel(state: CalculatorUiState) {
         tonalElevation = 2.dp,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(horizontal = 16.dp, vertical = 10.dp)
         ) {
-            TotalStat("УВ", "%.1f г".format(state.totalCarbs), MaterialTheme.colorScheme.primary)
-            TotalStat("ХЕ", "%.1f".format(state.breadUnits), MaterialTheme.colorScheme.secondary)
-            TotalStat("ГН", "%.1f".format(state.glycemicLoad), MaterialTheme.colorScheme.tertiary)
-            TotalStat("Б", "%.1f г".format(state.totalProteins), null)
-            TotalStat("Ж", "%.1f г".format(state.totalFats), null)
-            TotalStat("Ккал", "%.0f".format(state.totalCalories), null)
+            // Главное: УВ, ХЕ, ГН
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                TotalStat("УВ", "%.1f г".format(state.totalCarbs), MaterialTheme.colorScheme.primary, labelSp = 11, valueSp = 15)
+                TotalStat("ХЕ", "%.1f".format(state.breadUnits), MaterialTheme.colorScheme.secondary, labelSp = 11, valueSp = 15)
+                TotalStat("ГН", "%.1f".format(state.glycemicLoad), MaterialTheme.colorScheme.tertiary, labelSp = 11, valueSp = 15)
+            }
+            Spacer(Modifier.height(6.dp))
+            // Дополнительно: Б, Ж, Ккал
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                TotalStat("Белки", "%.1f г".format(state.totalProteins), null, labelSp = 10, valueSp = 12)
+                TotalStat("Жиры", "%.1f г".format(state.totalFats), null, labelSp = 10, valueSp = 12)
+                TotalStat("Ккал", "%.0f".format(state.totalCalories), null, labelSp = 10, valueSp = 12)
+            }
         }
     }
 }
 
 @Composable
-private fun TotalStat(label: String, value: String, color: Color?) {
+private fun TotalStat(label: String, value: String, color: Color?, labelSp: Int = 10, valueSp: Int = 13) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, fontSize = 10.sp, color = MaterialTheme.colorScheme.outline)
+        Text(label, fontSize = labelSp.sp, color = MaterialTheme.colorScheme.outline)
         Spacer(Modifier.height(2.dp))
-        Text(value, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+        Text(value, fontWeight = FontWeight.Bold, fontSize = valueSp.sp,
             color = color ?: MaterialTheme.colorScheme.onSurface)
     }
 }
+
+// ─── InsulinPanel ─────────────────────────────────────────────────────────────
 
 @Composable
 fun InsulinPanel(
@@ -304,34 +385,52 @@ fun InsulinPanel(
         modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Handle
+            // Drag handle
             Box(modifier = Modifier
                 .align(Alignment.CenterHorizontally)
-                .width(40.dp).height(4.dp)
-                .background(MaterialTheme.colorScheme.outline, MaterialTheme.shapes.small)
+                .width(48.dp).height(5.dp)
+                .background(MaterialTheme.colorScheme.outlineVariant, CircleShape)
             )
             Spacer(Modifier.height(12.dp))
 
             // Header row
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Glucose button
-                Column(
-                    modifier = Modifier.clickable { onEditGlucose() }
+                // Кнопка ввода глюкозы
+                Surface(
+                    onClick = onEditGlucose,
+                    shape = MaterialTheme.shapes.small,
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
                 ) {
-                    Text("Сахар", fontSize = 11.sp, color = MaterialTheme.colorScheme.outline)
-                    Text(
-                        if (state.currentGlucose > 0) "%.1f ммоль/л".format(state.currentGlucose)
-                        else "Введите сахар",
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp,
-                        color = glucoseColor ?: MaterialTheme.colorScheme.onSurface
-                    )
+                    Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
+                        Text("Сахар", fontSize = 11.sp, color = MaterialTheme.colorScheme.outline)
+                        Text(
+                            if (state.currentGlucose > 0) "%.1f ммоль/л".format(state.currentGlucose)
+                            else "Введите сахар",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp,
+                            color = glucoseColor ?: MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
                 Spacer(Modifier.weight(1f))
+                // Итоговая доза
                 Column(horizontalAlignment = Alignment.End) {
                     Text("ИТОГО", fontSize = 11.sp, color = MaterialTheme.colorScheme.outline)
-                    Text("%.1f ед".format(roundedDose),
-                        fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(
+                            "%.1f".format(roundedDose),
+                            fontSize = 32.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            " ед",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Normal,
+                            color = MaterialTheme.colorScheme.outline,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                    }
                 }
                 Spacer(Modifier.width(12.dp))
                 Button(
@@ -353,9 +452,11 @@ fun InsulinPanel(
                     if (state.correction > 0)
                         InsulinRow("Коррекция сахара:", "%.2f ед".format(state.correction), MaterialTheme.colorScheme.tertiary)
                     if (state.trendDelta != 0.0)
-                        InsulinRow("Поправка тренда CGM:",
+                        InsulinRow(
+                            "Поправка тренда CGM:",
                             "${if (state.trendDelta > 0) "+" else ""}%.1f ед".format(state.trendDelta),
-                            MaterialTheme.colorScheme.primary)
+                            MaterialTheme.colorScheme.primary
+                        )
                     InsulinRow("Точная доза:", "%.2f ед".format(state.totalDose))
 
                     Spacer(Modifier.height(8.dp))
@@ -403,6 +504,8 @@ private fun InsulinRow(label: String, value: String, color: Color? = null) {
             color = color ?: MaterialTheme.colorScheme.onSurface)
     }
 }
+
+// ─── Диалоги ──────────────────────────────────────────────────────────────────
 
 @Composable
 fun GlucoseInputDialog(current: Double, onDismiss: () -> Unit, onConfirm: (Double) -> Unit) {

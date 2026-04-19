@@ -37,6 +37,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -61,6 +62,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.glucoplan.app.domain.model.Meal
 import com.glucoplan.app.ui.theme.GlucoseColor
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -79,6 +81,11 @@ fun HistoryScreen(
     rememberCoroutineScope()
 
     LaunchedEffect(Unit) { viewModel.load() }
+
+    // Группировка по дате прямо в Composable, без изменений в ViewModel
+    val grouped = remember(state.meals) {
+        state.meals.groupBy { it.datetime.take(10) }
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -123,17 +130,32 @@ fun HistoryScreen(
             else -> LazyColumn(
                 contentPadding = PaddingValues(
                     start = 8.dp,
-                    top = padding.calculateTopPadding() + 8.dp,
+                    top = padding.calculateTopPadding() + 4.dp,
                     end = 8.dp,
                     bottom = 8.dp
                 )
             ) {
-                items(state.meals, key = { it.id }) { meal ->
-                    MealCard(
-                        meal = meal,
-                        onDelete = { viewModel.delete(meal) },
-                        onTap = { selectedMeal = meal }
-                    )
+                grouped.forEach { (dateStr, meals) ->
+                    stickyHeader(key = "header_$dateStr") {
+                        Surface(
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = formatDateHeader(dateStr),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+                    items(meals, key = { it.id }) { meal ->
+                        MealCard(
+                            meal = meal,
+                            onDelete = { viewModel.delete(meal) },
+                            onTap = { selectedMeal = meal }
+                        )
+                    }
                 }
             }
         }
@@ -168,6 +190,20 @@ fun HistoryScreen(
     }
 }
 
+// ─── Заголовок группы ─────────────────────────────────────────────────────────
+
+private fun formatDateHeader(dateStr: String): String {
+    val today = LocalDate.now()
+    val date = try { LocalDate.parse(dateStr) } catch (e: Exception) { return dateStr }
+    return when (date) {
+        today               -> "Сегодня"
+        today.minusDays(1)  -> "Вчера"
+        else                -> date.format(DateTimeFormatter.ofPattern("d MMMM yyyy", Locale("ru")))
+    }
+}
+
+// ─── MealCard ─────────────────────────────────────────────────────────────────
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MealCard(
@@ -190,7 +226,7 @@ private fun MealCard(
                 meal.datetime,
                 DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
             )
-            ldt.format(DateTimeFormatter.ofPattern("dd MMM yyyy, HH:mm", Locale("ru")))
+            ldt.format(DateTimeFormatter.ofPattern("HH:mm", Locale("ru")))
         } catch (e: DateTimeParseException) { meal.datetime }
     }
 
@@ -207,9 +243,11 @@ private fun MealCard(
         },
         enableDismissFromStartToEnd = false
     ) {
-        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { onTap() }) {
+        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp).clickable { onTap() }) {
             ListItem(
-                headlineContent = { Text(dt) },
+                headlineContent = {
+                    Text(dt, fontWeight = FontWeight.SemiBold)
+                },
                 supportingContent = {
                     val notes = if (meal.notes.isNotBlank()) "  ·  ${meal.notes}" else ""
                     Text("УВ: %.1f г  ·  ХЕ: %.1f$notes".format(meal.totalCarbs, meal.breadUnits))
@@ -246,6 +284,8 @@ private fun MealCard(
     }
 }
 
+// ─── MealDetailSheet ──────────────────────────────────────────────────────────
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MealDetailSheet(meal: Meal, viewModel: HistoryViewModel, onDismiss: () -> Unit) {
@@ -261,6 +301,40 @@ private fun MealDetailSheet(meal: Meal, viewModel: HistoryViewModel, onDismiss: 
             Text("Состав приёма", style = MaterialTheme.typography.titleMedium)
         }
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+        // Итоговая строка
+        Surface(
+            color = MaterialTheme.colorScheme.primaryContainer,
+            shape = MaterialTheme.shapes.medium,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, bottom = 8.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "УВ: %.1f г  ·  Доза: %.1f ед".format(meal.totalCarbs, meal.insulinDose),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                if (meal.glucose > 0) {
+                    val c = GlucoseColor(meal.glucose, 3.9, 10.0)
+                    Text(
+                        "%.1f ммоль/л".format(meal.glucose),
+                        color = c,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                }
+            }
+        }
+
         if (components.isEmpty()) {
             Box(Modifier.fillMaxWidth().padding(32.dp), Alignment.Center) {
                 Text("Нет данных о составе", color = MaterialTheme.colorScheme.outline)
