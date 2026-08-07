@@ -72,7 +72,13 @@ data class DishWithIngredients(
 ) {
     val totalCarbs: Double get() = ingredients.sumOf { it.carbsInPortion }
     val totalWeight: Double get() = ingredients.sumOf { it.weight }
-    val carbsPer100g: Double get() = if (totalWeight > 0) totalCarbs / totalWeight * 100.0 else 0.0
+    val carbsPer100g: Double
+        get() {
+            val totalCarbs = ingredients.sumOf { it.carbsInPortion }
+            val totalWeight = if (dish.defaultCookedWeight > 0.0) dish.defaultCookedWeight
+            else ingredients.sumOf { it.weight }
+            return if (totalWeight > 0) totalCarbs / totalWeight * 100.0 else 0.0
+        }
     val caloriesPer100g: Double get() {
         val totalCal = ingredients.sumOf { it.caloriesInPortion }
         return if (totalWeight > 0) totalCal / totalWeight * 100.0 else 0.0
