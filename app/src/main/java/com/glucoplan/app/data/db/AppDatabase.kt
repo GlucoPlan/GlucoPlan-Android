@@ -43,6 +43,21 @@ private class Migration1To2 : Migration(1, 2) {
     }
 }
 
+private class Migration3To4 : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE meals ADD COLUMN weighted_gi REAL NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE meals ADD COLUMN fpu REAL NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE meals ADD COLUMN bolus_kind TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE meals ADD COLUMN bolus_now REAL NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE meals ADD COLUMN bolus_extended REAL NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE meals ADD COLUMN bolus_duration_min INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE meals ADD COLUMN fpu_extra REAL NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE meals ADD COLUMN fpu_factor REAL NOT NULL DEFAULT 0.4")
+        db.execSQL("ALTER TABLE meals ADD COLUMN food_dose REAL NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE meals ADD COLUMN correction_dose REAL NOT NULL DEFAULT 0")
+    }
+}
+
 @Database(
     entities = [
         Product::class,
@@ -56,7 +71,7 @@ private class Migration1To2 : Migration(1, 2) {
         NsSyncLog::class,
         InsulinInjection::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -87,7 +102,7 @@ abstract class AppDatabase : RoomDatabase() {
                             db.execSQL("PRAGMA foreign_keys = ON")
                         }
                     })
-                    .addMigrations(Migration1To2(), Migration2To3())
+                    .addMigrations(Migration1To2(), Migration2To3(), Migration3To4())
                     .build()
                 INSTANCE = instance
                 // Seed after INSTANCE is assigned so the callback cannot race

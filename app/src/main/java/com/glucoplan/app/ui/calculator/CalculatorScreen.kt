@@ -121,6 +121,10 @@ fun CalculatorScreen(
             // Totals panel
             TotalsPanel(state = state)
 
+            if (state.components.isNotEmpty()) {
+                PumpPlanCard(plan = state.pumpPlan)
+            }
+
             // Insulin panel
             InsulinPanel(
                 state = state,
@@ -474,6 +478,35 @@ fun InsulinPanel(
 }
 
 @Composable
+private fun PumpPlanCard(plan: com.glucoplan.app.domain.calculator.PumpBolusPlan) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f)
+        )
+    ) {
+        Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+            Text("Помпа 720G", fontSize = 11.sp, color = MaterialTheme.colorScheme.outline)
+            Text(plan.summary, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+            if (plan.reason.isNotBlank()) {
+                Spacer(Modifier.height(2.dp))
+                Text(plan.reason, fontSize = 12.sp, color = MaterialTheme.colorScheme.outline)
+            }
+            if (plan.extraFpuUnits > 0) {
+                Text(
+                    "ИТОГО выше — только УВ и коррекция. Надбавка БЖ в растяжке, не в «ИТОГО».",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.outline,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun InsulinRow(label: String, value: String, color: Color? = null) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
@@ -530,7 +563,17 @@ fun SaveMealDialog(
                 InfoRow("Калории", "%.0f ккал".format(state.totalCalories))
                 if (state.currentGlucose > 0)
                     InfoRow("Сахар", "%.1f ммоль/л".format(state.currentGlucose))
-                InfoRow("Доза инсулина", "%.2f ед".format(state.totalDose))
+                InfoRow("Доза на УВ+коррекцию", "%.2f ед".format(state.totalDose))
+                if (state.pumpPlan.summary.isNotBlank()) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        state.pumpPlan.summary,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp
+                    )
+                    if (state.pumpPlan.reason.isNotBlank())
+                        Text(state.pumpPlan.reason, fontSize = 12.sp, color = MaterialTheme.colorScheme.outline)
+                }
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
                     value = notes,

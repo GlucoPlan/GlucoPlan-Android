@@ -6,6 +6,8 @@ import com.glucoplan.app.core.NightscoutClient
 import com.glucoplan.app.core.NsResult
 import com.glucoplan.app.data.repository.GlucoRepository
 import com.glucoplan.app.domain.calculator.InsulinCalculator
+import com.glucoplan.app.domain.calculator.PumpBolusPlanner
+import com.glucoplan.app.domain.calculator.PumpBolusPlan
 import com.glucoplan.app.domain.model.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -43,6 +45,22 @@ data class CalculatorUiState(
     val totalDose: Double get() = InsulinCalculator.totalDose(foodDose, correction, trendDelta)
     val roundedDown: Double get() = InsulinCalculator.roundDown(totalDose, settings.insulinStep)
     val roundedUp: Double get() = InsulinCalculator.roundUp(totalDose, settings.insulinStep)
+
+    val weightedGi: Double get() =
+        if (totalCarbs > 0) components.sumOf { it.glycemicIndex * it.carbsInPortion } / totalCarbs else 0.0
+
+    val pumpPlan: PumpBolusPlan get() = PumpBolusPlanner.plan(
+        carbsG = totalCarbs,
+        proteinG = totalProteins,
+        fatG = totalFats,
+        weightedGi = weightedGi,
+        foodDose = foodDose,
+        immediateExtra = correction + trendDelta,
+        carbsPerXe = settings.carbsPerXe,
+        carbCoefficient = settings.carbCoefficient,
+        insulinStep = settings.insulinStep,
+        fpuFactor = settings.fpuFactor
+    )
 }
 
 private const val CGM_POLL_INTERVAL_MS = 60_000L  // 1 minute
@@ -199,6 +217,7 @@ class CalculatorViewModel @Inject constructor(
             try {
                 val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
                     .withZone(ZoneId.systemDefault())
+                val plan = s.pumpPlan
                 val meal = Meal(
                     datetime = formatter.format(Instant.now()),
                     insulinDose = s.totalDose,
@@ -208,7 +227,17 @@ class CalculatorViewModel @Inject constructor(
                     totalCalories = s.totalCalories,
                     totalProteins = s.totalProteins,
                     totalFats = s.totalFats,
-                    breadUnits = s.breadUnits
+                    breadUnits = s.breadUnits,
+                    weightedGi = s.weightedGi,
+                    fpu = plan.fpu,
+                    bolusKind = plan.kindKey,
+                    bolusNow = plan.nowUnits,
+                    bolusExtended = plan.extendedUnits,
+                    bolusDurationMin = plan.durationMinutes,
+                    fpuExtra = plan.extraFpuUnits,
+                    fpuFactor = s.settings.fpuFactor,
+                    foodDose = s.foodDose,
+                    correctionDose = s.correction
                 )
                 val mealId = repo.saveMeal(meal, s.components)
 
@@ -216,11 +245,18 @@ class CalculatorViewModel @Inject constructor(
                 if (sendToNightscout && s.settings.nsEnabled && s.settings.nsUrl.isNotBlank()) {
                     try {
                         val client = NightscoutClient(s.settings.nsUrl, s.settings.nsApiSecret)
+                        val nsNotes = buildString {
+                            if (notes.isNotBlank()) append(notes)
+                            if (plan.summary.isNotBlank()) {
+                                if (isNotEmpty()) append(" | ")
+                                append(plan.summary)
+                            }
+                        }
                         client.postTreatment(
                             carbs    = s.totalCarbs,
                             insulin  = s.totalDose,
                             glucose  = s.currentGlucose,
-                            notes    = notes,
+                            notes    = nsNotes,
                             proteins = s.totalProteins,
                             fats     = s.totalFats,
                             glycemicIndex = s.components

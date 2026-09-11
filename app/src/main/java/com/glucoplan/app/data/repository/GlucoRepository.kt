@@ -122,7 +122,8 @@ class GlucoRepository @Inject constructor(
             basalTime = ns["basal_time"] ?: "22:00",
             nsEnabled = ns["enabled"] == "1",
             nsUrl = ns["url"] ?: "",
-            nsApiSecret = ns["api_secret"] ?: ""
+            nsApiSecret = ns["api_secret"] ?: "",
+            fpuFactor = map["fpu_factor"] ?: 0.4
         )
     }
 
@@ -135,7 +136,8 @@ class GlucoRepository @Inject constructor(
             AppSettingEntry("target_glucose_min", s.targetGlucoseMin),
             AppSettingEntry("target_glucose_max", s.targetGlucoseMax),
             AppSettingEntry("insulin_step", s.insulinStep),
-            AppSettingEntry("basal_dose", s.basalDose)
+            AppSettingEntry("basal_dose", s.basalDose),
+            AppSettingEntry("fpu_factor", s.fpuFactor)
         ))
         settingsDao.upsertNsAll(listOf(
             NsConfigEntry("insulin_type", s.insulinType),

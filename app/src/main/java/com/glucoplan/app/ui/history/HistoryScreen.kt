@@ -250,7 +250,14 @@ private fun MealCard(
                 },
                 supportingContent = {
                     val notes = if (meal.notes.isNotBlank()) "  ·  ${meal.notes}" else ""
-                    Text("УВ: %.1f г  ·  ХЕ: %.1f$notes".format(meal.totalCarbs, meal.breadUnits))
+                    val plan = if (meal.bolusKind.isNotBlank() && meal.bolusKind != "normal") {
+                        when (meal.bolusKind) {
+                            "dual" -> "  ·  комбо"
+                            "square" -> "  ·  растяжка"
+                            else -> ""
+                        }
+                    } else ""
+                    Text("УВ: %.1f г  ·  ХЕ: %.1f$plan$notes".format(meal.totalCarbs, meal.breadUnits))
                 },
                 trailingContent = {
                     Column(horizontalAlignment = Alignment.End) {
@@ -318,7 +325,7 @@ private fun MealDetailSheet(meal: Meal, viewModel: HistoryViewModel, onDismiss: 
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "УВ: %.1f г  ·  Доза: %.1f ед".format(meal.totalCarbs, meal.insulinDose),
+                    "УВ: %.1f г  ·  Доза УВ: %.1f ед".format(meal.totalCarbs, meal.insulinDose),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -332,6 +339,31 @@ private fun MealDetailSheet(meal: Meal, viewModel: HistoryViewModel, onDismiss: 
                         fontSize = 14.sp
                     )
                 }
+            }
+        }
+
+        if (meal.bolusKind.isNotBlank()) {
+            val planText = when (meal.bolusKind) {
+                "dual" -> "Комбо: %.1f ед сразу + %.1f ед за %d мин".format(
+                    meal.bolusNow, meal.bolusExtended, meal.bolusDurationMin)
+                "square" -> "Растянутый: %.1f ед за %d мин".format(
+                    meal.bolusExtended, meal.bolusDurationMin)
+                else -> "Всё сразу: %.1f ед".format(meal.bolusNow)
+            }
+            Text(
+                planText,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium
+            )
+            if (meal.fpuExtra > 0 || meal.fpu > 0) {
+                Text(
+                    "FPU %.1f · надбавка БЖ %.1f ед · коэф. %.2f".format(
+                        meal.fpu, meal.fpuExtra, meal.fpuFactor),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.outline
+                )
             }
         }
 

@@ -125,7 +125,17 @@ data class Meal(
     @ColumnInfo(name = "total_calories") val totalCalories: Double = 0.0,
     @ColumnInfo(name = "total_proteins") val totalProteins: Double = 0.0,
     @ColumnInfo(name = "total_fats") val totalFats: Double = 0.0,
-    @ColumnInfo(name = "bread_units") val breadUnits: Double = 0.0
+    @ColumnInfo(name = "bread_units") val breadUnits: Double = 0.0,
+    @ColumnInfo(name = "weighted_gi") val weightedGi: Double = 0.0,
+    val fpu: Double = 0.0,
+    @ColumnInfo(name = "bolus_kind") val bolusKind: String = "",
+    @ColumnInfo(name = "bolus_now") val bolusNow: Double = 0.0,
+    @ColumnInfo(name = "bolus_extended") val bolusExtended: Double = 0.0,
+    @ColumnInfo(name = "bolus_duration_min") val bolusDurationMin: Int = 0,
+    @ColumnInfo(name = "fpu_extra") val fpuExtra: Double = 0.0,
+    @ColumnInfo(name = "fpu_factor") val fpuFactor: Double = 0.4,
+    @ColumnInfo(name = "food_dose") val foodDose: Double = 0.0,
+    @ColumnInfo(name = "correction_dose") val correctionDose: Double = 0.0
 )
 
 @Entity(
@@ -274,5 +284,6 @@ data class AppSettings(
     val basalTime: String = "9:00",
     val nsEnabled: Boolean = false,
     val nsUrl: String = "",
-    val nsApiSecret: String = ""
+    val nsApiSecret: String = "",
+    val fpuFactor: Double = 0.4
 )

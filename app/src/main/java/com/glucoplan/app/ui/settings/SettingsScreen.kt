@@ -51,6 +51,7 @@ fun SettingsScreen(
     var targetMax        by remember(s.targetGlucoseMax)  { mutableStateOf(s.targetGlucoseMax.toString()) }
     var insulinStep      by remember(s.insulinStep)       { mutableStateOf(s.insulinStep.toString()) }
     var basalDose        by remember(s.basalDose)         { mutableStateOf(s.basalDose.toString()) }
+    var fpuFactor        by remember(s.fpuFactor)         { mutableStateOf(s.fpuFactor.toString()) }
     var nsUrl            by remember(s.nsUrl)             { mutableStateOf(s.nsUrl) }
     var nsSecret         by remember(s.nsApiSecret)       { mutableStateOf(s.nsApiSecret) }
     var nsEnabled        by remember(s.nsEnabled)         { mutableStateOf(s.nsEnabled) }
@@ -66,6 +67,7 @@ fun SettingsScreen(
         targetGlucoseMax = targetMax.toDoubleOrNull()   ?: s.targetGlucoseMax,
         insulinStep      = insulinStep.toDoubleOrNull() ?: s.insulinStep,
         basalDose        = basalDose.toDoubleOrNull()   ?: s.basalDose,
+        fpuFactor        = fpuFactor.toDoubleOrNull()?.coerceIn(0.0, 1.0) ?: s.fpuFactor,
         nsUrl            = nsUrl.trim(),
         nsApiSecret      = nsSecret,
         nsEnabled        = nsEnabled
@@ -309,6 +311,15 @@ fun SettingsScreen(
             BlurSaveField("Ед на 1 ХЕ", carbCoeff, { carbCoeff = it }) {
                 viewModel.save(buildSettings())
             }
+            BlurSaveField("Надбавка белок/жир (0–1)", fpuFactor, { fpuFactor = it }) {
+                viewModel.save(buildSettings())
+            }
+            Text(
+                "0 — не учитывать БЖ. 1 — полная формула Паньковской. Для ребёнка лучше 0.3–0.5. Крутить по хвосту Libre через 3–5 ч.",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
             BlurSaveField("1 ед снижает сахар на (ммоль/л)", sensitivity, { sensitivity = it }) {
                 viewModel.save(buildSettings())
             }
