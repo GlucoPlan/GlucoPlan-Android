@@ -99,6 +99,7 @@ class NightscoutClient(
 
     private val client: OkHttpClient by lazy {
         val builder = OkHttpClient.Builder()
+            .dns(NightscoutDns)
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
             .writeTimeout(15, TimeUnit.SECONDS)
@@ -139,6 +140,33 @@ class NightscoutClient(
         else -> NsResult.Error(code, "HTTP $code${body?.let { ": ${it.take(120)}" } ?: ""}")
     }
 
+    private fun ioError(e: Exception): NsResult.Error {
+        val msg = when (e) {
+            is java.net.UnknownHostException ->
+                "Телефон не нашёл адрес сервера (DNS). Браузер часто ходит другим путём, поэтому сайт открывается. Нажмите «Повторить»."
+            is java.net.SocketTimeoutException ->
+                "Сервер Nightscout не ответил вовремя. Нажмите «Повторить»."
+            else -> "Нет сети или сервер не отвечает: ${e.message}"
+        }
+        return NsResult.Error(null, msg, e)
+    }
+
+    private fun executeWithRetry(request: Request): okhttp3.Response {
+        var last: IOException? = null
+        repeat(3) { attempt ->
+            try {
+                return client.newCall(request).execute()
+            } catch (e: IOException) {
+                last = e
+                Timber.w(e, "$tag: attempt ${attempt + 1}/3 failed ${request.url}")
+                if (attempt < 2) {
+                    try { Thread.sleep(400L * (attempt + 1)) } catch (_: InterruptedException) {}
+                }
+            }
+        }
+        throw last ?: IOException("request failed")
+    }
+
     // -------------------------------------------------------------------------
     // Connection Check
     // -------------------------------------------------------------------------
@@ -155,7 +183,7 @@ class NightscoutClient(
                 .get()
                 .build()
 
-            val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
+            val response = withContext(Dispatchers.IO) { executeWithRetry(request) }
             val body = response.body?.string()
 
             Timber.d("$tag: Status response code=${response.code}")
@@ -172,7 +200,7 @@ class NightscoutClient(
             }
         } catch (e: Exception) {
             Timber.e(e, "$tag: Connection exception")
-            NsResult.Error(null, "Нет сети или сервер не отвечает: ${e.message}", e)
+            ioError(e)
         }
     }
 
@@ -192,7 +220,7 @@ class NightscoutClient(
                 .get()
                 .build()
 
-            val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
+            val response = withContext(Dispatchers.IO) { executeWithRetry(request) }
 
             if (!response.isSuccessful) {
                 val body = response.body?.string()
@@ -255,7 +283,7 @@ class NightscoutClient(
 
         } catch (e: Exception) {
             Timber.e(e, "$tag: Exception fetching CGM data")
-            NsResult.Error(null, "Failed to get CGM: ${e.message}", e)
+            ioError(e)
         }
     }
 
@@ -271,7 +299,7 @@ class NightscoutClient(
                 .get()
                 .build()
 
-            val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
+            val response = withContext(Dispatchers.IO) { executeWithRetry(request) }
 
             if (!response.isSuccessful) {
                 return httpError(response.code)
@@ -304,7 +332,7 @@ class NightscoutClient(
 
         } catch (e: Exception) {
             Timber.e(e, "$tag: Exception fetching CGM entries")
-            NsResult.Error(null, "Failed to get entries: ${e.message}", e)
+            ioError(e)
         }
     }
 
@@ -324,7 +352,7 @@ class NightscoutClient(
                 .get()
                 .build()
 
-            val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
+            val response = withContext(Dispatchers.IO) { executeWithRetry(request) }
 
             if (!response.isSuccessful) {
                 return httpError(response.code)
@@ -367,7 +395,7 @@ class NightscoutClient(
 
         } catch (e: Exception) {
             Timber.e(e, "$tag: Exception fetching treatments")
-            NsResult.Error(null, "Failed to get treatments: ${e.message}", e)
+            ioError(e)
         }
     }
 
@@ -435,7 +463,7 @@ class NightscoutClient(
                 .post(body)
                 .build()
 
-            val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
+            val response = withContext(Dispatchers.IO) { executeWithRetry(request) }
 
             if (response.isSuccessful) {
                 Timber.i("$tag: Treatment posted successfully")
@@ -448,7 +476,7 @@ class NightscoutClient(
 
         } catch (e: Exception) {
             Timber.e(e, "$tag: Exception posting treatment")
-            NsResult.Error(null, "Failed to post treatment: ${e.message}", e)
+            ioError(e)
         }
     }
 
@@ -468,7 +496,7 @@ class NightscoutClient(
                 .get()
                 .build()
 
-            val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
+            val response = withContext(Dispatchers.IO) { executeWithRetry(request) }
 
             if (!response.isSuccessful) {
                 return NsResult.Error(response.code, "HTTP ${response.code}")
@@ -529,7 +557,7 @@ class NightscoutClient(
 
         } catch (e: Exception) {
             Timber.e(e, "$tag: Exception fetching profile")
-            NsResult.Error(null, "Failed to get profile: ${e.message}", e)
+            ioError(e)
         }
     }
 
@@ -553,7 +581,7 @@ class NightscoutClient(
         return try {
             val request = Request.Builder()
                 .url(url).nsAuth().get().build()
-            val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
+            val response = withContext(Dispatchers.IO) { executeWithRetry(request) }
 
             if (!response.isSuccessful)
                 return NsResult.Error(response.code, "HTTP ${response.code}")
@@ -614,7 +642,7 @@ class NightscoutClient(
 
         } catch (e: Exception) {
             Timber.e(e, "$tag: Exception loading settings from profile")
-            NsResult.Error(null, "Ошибка чтения профиля: ${e.message}", e)
+            ioError(e)
         }
     }
 
@@ -682,7 +710,7 @@ class NightscoutClient(
                 .header("Content-Type", "application/json")
                 .post(body).build()
 
-            val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
+            val response = withContext(Dispatchers.IO) { executeWithRetry(request) }
 
             if (response.isSuccessful) {
                 Timber.i("$tag: Settings saved to NS profile")
@@ -692,7 +720,7 @@ class NightscoutClient(
             }
         } catch (e: Exception) {
             Timber.e(e, "$tag: Exception saving settings to profile")
-            NsResult.Error(null, "Ошибка записи профиля: ${e.message}", e)
+            ioError(e)
         }
     }
 
