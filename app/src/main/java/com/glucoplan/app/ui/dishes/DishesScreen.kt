@@ -199,8 +199,25 @@ fun DishEditScreen(
     var selectedPanId by remember { mutableStateOf(dish?.dish?.defaultPanId) }
     var ingredients by remember { mutableStateOf(dish?.ingredients?.toMutableList() ?: mutableListOf<DishIngredient>()) }
     val pans by viewModel.pans.collectAsStateWithLifecycle()
+    val products by productsViewModel.products.collectAsStateWithLifecycle()
     var showAddIngredient by remember { mutableStateOf(false) }
     var saveError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(products) {
+        if (products.isEmpty() || ingredients.isEmpty()) return@LaunchedEffect
+        val byId = products.associateBy { it.id }
+        ingredients = ingredients.map { ing ->
+            val p = byId[ing.productId] ?: return@map ing
+            ing.copy(
+                productName = p.name,
+                carbs = p.carbs,
+                calories = p.calories,
+                proteins = p.proteins,
+                fats = p.fats,
+                glycemicIndex = p.glycemicIndex
+            )
+        }.toMutableList()
+    }
 
     val selectedPan = pans.firstOrNull { it.id == selectedPanId }
     val gross = grossWeight.replace(',', '.').toDoubleOrNull() ?: 0.0
@@ -306,11 +323,12 @@ fun DishEditScreen(
                     Column(Modifier.fillMaxWidth().padding(12.dp)) {
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceAround) {
                             DishStat("УВ всего", "%.1f г".format(preview.totalCarbs))
+                            DishStat("Сырой состав", "%.0f г".format(preview.totalWeight))
                             DishStat("Нетто", "%.0f г".format(preview.edibleWeight))
-                            DishStat("УВ/100г", "%.1f г".format(preview.carbsPer100g))
                         }
                         Spacer(Modifier.height(8.dp))
                         Row(Modifier.fillMaxWidth(), Arrangement.SpaceAround) {
+                            DishStat("УВ/100г", "%.1f г".format(preview.carbsPer100g))
                             DishStat("Белки/100г", "%.1f г".format(preview.proteinsPer100g))
                             DishStat("Жиры/100г", "%.1f г".format(preview.fatsPer100g))
                             DishStat("Ккал/100г", "%.0f".format(preview.caloriesPer100g))
@@ -327,15 +345,16 @@ fun DishEditScreen(
                 }
             }
 
-            items(ingredients.size) { idx ->
-                val ing = ingredients[idx]
+            items(ingredients, key = { it.editorId }) { ing ->
                 IngredientRow(
                     ingredient = ing,
                     onWeightChange = { w ->
-                        ingredients = ingredients.toMutableList().also { it[idx] = ing.copy(weight = w) }
+                        ingredients = ingredients.map {
+                            if (it.editorId == ing.editorId) it.copy(weight = w) else it
+                        }.toMutableList()
                     },
                     onRemove = {
-                        ingredients = ingredients.toMutableList().also { it.removeAt(idx) }
+                        ingredients = ingredients.filter { it.editorId != ing.editorId }.toMutableList()
                     }
                 )
                 HorizontalDivider()
@@ -402,19 +421,27 @@ private fun IngredientRow(
     onWeightChange: (Double) -> Unit,
     onRemove: () -> Unit
 ) {
-    var wText by remember(ingredient.id, ingredient.weight) {
-        mutableStateOf("%.0f".format(ingredient.weight))
+    var wText by remember(ingredient.editorId) {
+        mutableStateOf(
+            if (ingredient.weight == ingredient.weight.toLong().toDouble())
+                ingredient.weight.toLong().toString()
+            else ingredient.weight.toString()
+        )
     }
     ListItem(
         headlineContent = { Text(ingredient.productName) },
-        supportingContent = { Text("УВ: %.1f г".format(ingredient.carbsInPortion)) },
+        supportingContent = {
+            Text("УВ в порции: %.1f г   ·   в справочнике %.1f г/100г".format(
+                ingredient.carbsInPortion, ingredient.carbs
+            ))
+        },
         trailingContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
                     value = wText,
                     onValueChange = { v ->
                         wText = v
-                        v.toDoubleOrNull()?.let { w -> if (w > 0) onWeightChange(w) }
+                        v.replace(',', '.').toDoubleOrNull()?.let { w -> if (w > 0) onWeightChange(w) }
                     },
                     modifier = Modifier.width(80.dp),
                     suffix = { Text("г") },

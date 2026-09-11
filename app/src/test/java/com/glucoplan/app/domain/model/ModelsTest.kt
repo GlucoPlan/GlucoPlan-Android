@@ -199,7 +199,23 @@ class ModelsTest {
     )
 
     @Test
-    fun `totalCarbs суммирует углеводы из всех ингредиентов`() {
+    fun `сумма углеводов ингредиентов равна totalCarbs без округления вверх`() {
+        val блюдо = DishWithIngredients(
+            dish = Dish(name = "Рагу", defaultCookedWeight = 1485.0, defaultPanId = 1),
+            ingredients = listOf(
+                ингредиент(вес = 135.0, углеводы = 18.0),
+                ингредиент(вес = 88.0, углеводы = 9.545454545),
+                ингредиент(вес = 42.0, углеводы = 9.047619047),
+                ингредиент(вес = 25.0, углеводы = 70.0),
+                ингредиент(вес = 100.0, углеводы = 22.8)
+            ),
+            pan = Pan(id = 1, name = "Кастрюля", weight = 400.0)
+        )
+        // 24.3 + 8.4 + 3.8 + 17.5 + 22.8 = 76.8 — так на экране
+        assertThat(блюдо.totalCarbs).isWithin(0.05).of(76.8)
+        assertThat(блюдо.edibleWeight).isEqualTo(1085.0)
+        assertThat(блюдо.carbsPer100g).isWithin(0.05).of(7.1)
+    }
         val блюдо = DishWithIngredients(
             dish = Dish(name = "Суп"),
             ingredients = listOf(

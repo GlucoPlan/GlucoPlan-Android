@@ -59,7 +59,8 @@ data class DishIngredient(
     val calories: Double,
     val proteins: Double,
     val fats: Double,
-    val glycemicIndex: Double
+    val glycemicIndex: Double,
+    val editorId: String = java.util.UUID.randomUUID().toString()
 ) {
     val carbsInPortion: Double get() = carbs * weight / 100.0
     val caloriesInPortion: Double get() = calories * weight / 100.0
