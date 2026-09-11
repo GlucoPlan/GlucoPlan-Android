@@ -289,14 +289,6 @@ fun CgmWidget(
                 Spacer(Modifier.width(8.dp))
                 if (reading.isStale) {
                     Text("(устаревшее)", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                } else {
-                    reading.forecast20min?.let {
-                        Text(
-                            "→ %.1f через 20 мин".format(it),
-                            fontSize = 12.sp,
-                            color = color.copy(alpha = 0.7f)
-                        )
-                    }
                 }
                 Spacer(Modifier.weight(1f))
                 val diffMin = java.time.Instant.now().epochSecond / 60 - reading.time.epochSecond / 60

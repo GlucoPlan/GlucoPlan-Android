@@ -28,7 +28,7 @@ data class GlucosePoint(
     val isManual: Boolean = false  // true = глюкометр, false = сенсор
 )
 
-/** Событие на графике — укол или приём пищи */
+/** Событие на графике — укол, еда или прочее из Nightscout */
 sealed class ChartEvent {
     abstract val time: Instant
 
@@ -47,6 +47,13 @@ sealed class ChartEvent {
         val fats: Double = 0.0,     // г
         val giCategory: String = "", // "low" | "medium" | "high" | ""
         val notes: String
+    ) : ChartEvent()
+
+    data class Other(
+        override val time: Instant,
+        val eventType: String,
+        val label: String,
+        val notes: String = ""
     ) : ChartEvent()
 }
 
@@ -71,11 +78,7 @@ data class GlucoseChartUiState(
     val windowEnd: Instant = Instant.now(),
 
     // Что сейчас под пальцем
-    val tooltip: ChartTooltip? = null,
-
-    // Границы оси Y (авто, но с минимум 2..16)
-    val yMin: Double = 2.0,
-    val yMax: Double = 16.0
+    val tooltip: ChartTooltip? = null
 ) {
     val windowStart: Instant get() = windowEnd.minus(windowHours.toLong(), ChronoUnit.HOURS)
 
@@ -86,6 +89,21 @@ data class GlucoseChartUiState(
     /** События в текущем окне */
     val visibleEvents: List<ChartEvent>
         get() = events.filter { it.time >= windowStart && it.time <= windowEnd }
+
+    /** Ось Y по видимым точкам: минимум снизу, максимум сверху, без пустых полей */
+    val yMin: Double get() = yRange.first
+    val yMax: Double get() = yRange.second
+
+    private val yRange: Pair<Double, Double>
+        get() {
+            val gs = visiblePoints.map { it.glucose }
+            if (gs.isEmpty()) return 3.0 to 10.0
+            val lo = gs.minOrNull() ?: return 3.0 to 10.0
+            val hi = gs.maxOrNull() ?: return 3.0 to 10.0
+            val span = (hi - lo).coerceAtLeast(0.8)
+            val pad = span * 0.04
+            return (lo - pad) to (hi + pad)
+        }
 }
 
 @HiltViewModel
@@ -150,9 +168,10 @@ class GlucoseChartViewModel @Inject constructor(
         if (treatResult is NsResult.Success) {
             treatResult.data.forEach { t ->
                 Timber.d("Chart: treatment eventType=${t.eventType} glucoseType=${t.glucoseType} carbs=${t.carbs} insulin=${t.insulin} glucose=${t.glucose}")
-                // Ручной замер глюкометром — из любого treatment где есть glucose и glucoseType
-                if (t.glucoseType == "Finger" || t.glucoseType == "Manual" ||
-                    t.eventType == "BG Check") {
+                if (t.glucoseType.equals("Finger", true) ||
+                    t.glucoseType.equals("Manual", true) ||
+                    t.eventType.equals("BG Check", true)
+                ) {
                     t.glucose?.let { g ->
                         manualReadings.add(GlucosePoint(
                             time = t.createdAt,
@@ -162,39 +181,35 @@ class GlucoseChartViewModel @Inject constructor(
                     }
                 }
 
+                val carbs = t.carbs ?: 0.0
+                val insulin = t.insulin ?: 0.0
                 when {
-                    // Болюс / коррекция (есть инсулин, нет/мало углеводов)
-                    t.insulin != null && t.insulin > 0 && (t.carbs == null || t.carbs == 0.0) -> {
+                    insulin > 0 && carbs <= 0 -> {
                         events.add(ChartEvent.Injection(
                             time = t.createdAt,
-                            dose = t.insulin,
-                            insulinType = "bolus",
-                            isBasal = false
+                            dose = insulin,
+                            insulinType = t.eventType.ifBlank { "bolus" },
+                            isBasal = t.eventType.contains("basal", ignoreCase = true)
                         ))
                     }
-                    // Приём пищи с инсулином (оба поля заполнены)
-                    t.carbs != null && t.carbs > 0 && t.insulin != null && t.insulin > 0 -> {
-                        val gi = t.glycemicIndex ?: ""
+                    carbs > 0 -> {
                         events.add(ChartEvent.Meal(
                             time = t.createdAt,
-                            carbs = t.carbs,
-                            insulin = t.insulin,
+                            carbs = carbs,
+                            insulin = insulin,
                             proteins = t.proteins ?: 0.0,
                             fats = t.fats ?: 0.0,
-                            giCategory = gi,
+                            giCategory = t.glycemicIndex ?: "",
                             notes = t.notes ?: ""
                         ))
                     }
-                    // Только углеводы (инсулин не записан)
-                    t.carbs != null && t.carbs > 0 -> {
-                        val gi = t.glycemicIndex ?: ""
-                        events.add(ChartEvent.Meal(
+                    t.eventType.equals("BG Check", true) -> Unit
+                    t.eventType.equals("Unknown", true) && t.notes.isNullOrBlank() -> Unit
+                    else -> {
+                        events.add(ChartEvent.Other(
                             time = t.createdAt,
-                            carbs = t.carbs,
-                            insulin = 0.0,
-                            proteins = t.proteins ?: 0.0,
-                            fats = t.fats ?: 0.0,
-                            giCategory = gi,
+                            eventType = t.eventType,
+                            label = nsEventLabel(t),
                             notes = t.notes ?: ""
                         ))
                     }
@@ -256,10 +271,7 @@ class GlucoseChartViewModel @Inject constructor(
             }
         }
 
-        // Авто-масштаб оси Y
-        val allGlucose = cgmPoints.map { it.glucose }
-        val yMin = (allGlucose.minOrNull() ?: 2.0).coerceAtMost(2.0)
-        val yMax = (allGlucose.maxOrNull() ?: 16.0).coerceAtLeast(16.0)
+        // Авто-масштаб оси Y считается из visiblePoints в UiState
 
         // Добавляем ручные замеры к CGM точкам (с флагом isManual=true)
         // Дедупликация: не добавляем если уже есть CGM точка в ±2 минуты
@@ -276,8 +288,6 @@ class GlucoseChartViewModel @Inject constructor(
                 loading = false,
                 points = mergedPoints,
                 events = events.sortedBy { e -> e.time },
-                yMin = yMin,
-                yMax = yMax,
                 windowEnd = Instant.now()
             )
         }
@@ -358,5 +368,28 @@ class GlucoseChartViewModel @Inject constructor(
 
     fun clearTooltip() {
         _state.update { it.copy(tooltip = null) }
+    }
+}
+
+private fun nsEventLabel(t: com.glucoplan.app.core.NsTreatment): String {
+    val type = t.eventType
+    val lower = type.lowercase()
+    return when {
+        "temp basal" in lower -> buildString {
+            append("База")
+            t.absolute?.let { append(" ${"%.2f".format(it)} ед/ч") }
+            t.percent?.let { append(" $it%") }
+            t.duration?.let { if (it > 0) append(" ${it.toInt()} мин") }
+        }
+        "site change" in lower || "cannula" in lower -> "Смена места"
+        "sensor start" in lower -> "Новый сенсор"
+        "sensor stop" in lower || "sensor change" in lower -> "Сенсор"
+        "cartridge" in lower -> "Смена картриджа"
+        "battery" in lower -> "Батарея"
+        "exercise" in lower -> "Нагрузка"
+        "note" in lower || "announcement" in lower -> t.notes?.takeIf { it.isNotBlank() } ?: "Заметка"
+        "profile" in lower -> "Профиль"
+        "target" in lower -> "Цель"
+        else -> t.notes?.takeIf { it.isNotBlank() } ?: type.ifBlank { "Событие" }
     }
 }

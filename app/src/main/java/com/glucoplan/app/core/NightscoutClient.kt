@@ -47,7 +47,10 @@ data class NsTreatment(
     val proteins: Double?,
     val fats: Double?,
     val glycemicIndex: String?,  // "low" | "medium" | "high" | null
-    val notes: String?
+    val notes: String?,
+    val duration: Double? = null,   // мин, для временной базы
+    val absolute: Double? = null,   // ед/ч
+    val percent: Double? = null
 )
 
 /**
@@ -167,6 +170,18 @@ class NightscoutClient(
         throw last ?: IOException("request failed")
     }
 
+    private fun parseNsGlucose(t: org.json.JSONObject): Double? {
+        val raw = t.optDouble("glucose", -1.0)
+        if (raw <= 0 || raw.isNaN()) return null
+        val units = t.optString("units").ifBlank { t.optString("glucoseUnits") }.lowercase()
+        return when {
+            units.startsWith("mmol") -> raw
+            units.startsWith("mg") -> raw / 18.0
+            raw < 25.0 -> raw
+            else -> raw / 18.0
+        }
+    }
+
     // -------------------------------------------------------------------------
     // Connection Check
     // -------------------------------------------------------------------------
@@ -252,30 +267,10 @@ class NightscoutClient(
             val dateMs = latest.optLong("date", 0L)
             val time = if (dateMs > 0) Instant.ofEpochMilli(dateMs) else Instant.now()
 
-            // 20-min forecast from 2 readings
-            var forecast20: Double? = null
-            if (entries.length() >= 2) {
-                try {
-                    val prev = entries.getJSONObject(1)
-                    val prevGlucose = prev.optDouble("sgv", -1.0) / 18.0
-                    val prevMs = prev.optLong("date", 0L)
-                    if (prevMs > 0 && dateMs > prevMs && prevGlucose > 0) {
-                        val diffMin = (dateMs - prevMs) / 60000.0
-                        if (diffMin > 0) {
-                            val ratePerMin = (glucose - prevGlucose) / diffMin
-                            forecast20 = glucose + ratePerMin * 20.0
-                        }
-                    }
-                } catch (e: Exception) {
-                    Timber.w(e, "$tag: Failed to calculate forecast")
-                }
-            }
-
             val reading = CgmReading(
                 glucose = glucose,
                 direction = direction,
-                time = time,
-                forecast20min = forecast20
+                time = time
             )
 
             Timber.i("$tag: CGM reading: ${"%.1f".format(glucose)} mmol/L, direction=$direction")
@@ -342,7 +337,7 @@ class NightscoutClient(
 
     suspend fun getTreatments(since: Instant): NsResult<List<NsTreatment>> {
         if (baseUrl.isBlank()) return NsResult.Error(message = "Укажите URL Nightscout")
-        val url = "$baseUrl/api/v1/treatments.json?find[created_at][\$gte]=${DateTimeFormatter.ISO_INSTANT.format(since)}&count=100"
+        val url = "$baseUrl/api/v1/treatments.json?find[created_at][\$gte]=${DateTimeFormatter.ISO_INSTANT.format(since)}&count=1000"
         Timber.d("$tag: Fetching treatments since $since")
 
         return try {
@@ -376,14 +371,17 @@ class NightscoutClient(
                         id = t.optString("_id", null),
                         eventType = t.optString("eventType", "Unknown"),
                         createdAt = createdAt,
-                        glucose = t.optDouble("glucose", -1.0).let { if (it > 0) it / 18.0 else null },
-                        glucoseType = t.optString("glucoseType", null),
+                        glucose = parseNsGlucose(t),
+                        glucoseType = t.optString("glucoseType").takeIf { it.isNotBlank() && it != "null" },
                         carbs = t.optDouble("carbs", -1.0).let { if (it > 0) it else null },
                         insulin = t.optDouble("insulin", -1.0).let { if (it > 0) it else null },
                         proteins = t.optDouble("protein", -1.0).let { if (it > 0) it else null },
                         fats = t.optDouble("fat", -1.0).let { if (it > 0) it else null },
                         glycemicIndex = t.optString("glycemicIndex", null).takeIf { !it.isNullOrBlank() },
-                        notes = t.optString("notes", null)
+                        notes = t.optString("notes", null).takeIf { it.isNotBlank() },
+                        duration = t.optDouble("duration", -1.0).takeIf { it >= 0 },
+                        absolute = t.optDouble("absolute", -1.0).takeIf { it >= 0 },
+                        percent = if (t.has("percent")) t.optDouble("percent") else null
                     ))
                 } catch (e: Exception) {
                     Timber.w(e, "$tag: Failed to parse treatment $i")

@@ -36,6 +36,7 @@ private val ColorHyper   = Color(0xFFB71C1C)   // > 14     — тёмно-кра
 private val ColorMeal    = Color(0xFF2196F3)   // еда
 private val ColorInsulin = Color(0xFF9C27B0)   // инсулин
 private val ColorManual  = Color(0xFF795548)   // глюкометр
+private val ColorOther   = Color(0xFFFFC107)   // прочие события NS
 private val ColorGrid    = Color(0x22000000)
 
 private fun glucoseColor(g: Double) = when {
@@ -283,6 +284,16 @@ private fun TooltipPanel(tooltip: ChartTooltip?, settings: com.glucoplan.app.dom
                         Text(ev.insulinType, fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.outline)
                     }
+                    is ChartEvent.Other -> Column(horizontalAlignment = Alignment.End) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(10.dp).background(ColorOther, CircleShape))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Nightscout", fontSize = 11.sp, color = MaterialTheme.colorScheme.outline)
+                        }
+                        Text(ev.label, fontWeight = FontWeight.Medium, fontSize = 13.sp)
+                        if (ev.notes.isNotBlank() && ev.notes != ev.label)
+                            Text(ev.notes, fontSize = 11.sp, color = MaterialTheme.colorScheme.outline)
+                    }
                 }
             }
         }
@@ -303,7 +314,8 @@ private fun Legend() {
         LegendDot(ColorHypo,    "Гипо/Гипер")
         LegendDot(ColorMeal,    "Еда")
         LegendDot(ColorInsulin, "Инсулин")
-        LegendDot(ColorManual,  "Глюкометр ●")
+        LegendDot(ColorOther,   "Прочее")
+        LegendDot(ColorManual,  "Глюкометр")
     }
 }
 
@@ -448,8 +460,10 @@ private fun GlucoseChart(
             )
 
             // Метка
+            val tickText = if (kotlin.math.abs(gVal - gVal.toInt()) < 0.05)
+                "%.0f".format(gVal) else "%.1f".format(gVal)
             val label = textMeasurer.measure(
-                "%.0f".format(gVal),
+                tickText,
                 style = TextStyle(fontSize = 10.sp, color = Color(0xFF888888))
             )
             drawText(label, topLeft = Offset(2f, y - label.size.height / 2f))
@@ -567,6 +581,22 @@ private fun GlucoseChart(
                         pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f))
                     )
                 }
+                is ChartEvent.Other -> {
+                    val size = 7f
+                    val yCenter = h - padBottom - 32f
+                    drawRect(
+                        color = ColorOther,
+                        topLeft = Offset(x - size / 2f, yCenter - size / 2f),
+                        size = androidx.compose.ui.geometry.Size(size, size)
+                    )
+                    drawLine(
+                        color = ColorOther.copy(alpha = 0.45f),
+                        start = Offset(x, padTop),
+                        end   = Offset(x, yCenter - size / 2f),
+                        strokeWidth = 1f,
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f))
+                    )
+                }
             }
         }
 
@@ -660,15 +690,18 @@ private fun GlucoseChart(
 // ─── Вспомогательные функции ──────────────────────────────────────────────────
 
 private fun generateYTicks(yMin: Double, yMax: Double): List<Double> {
+    val span = yMax - yMin
     val step = when {
-        yMax - yMin > 20 -> 4.0
-        yMax - yMin > 10 -> 2.0
-        else -> 1.0
+        span > 16 -> 4.0
+        span > 10 -> 2.0
+        span > 5  -> 1.0
+        span > 2  -> 0.5
+        else      -> 0.2
     }
     val ticks = mutableListOf<Double>()
     var v = kotlin.math.ceil(yMin / step) * step
-    while (v <= yMax) {
-        ticks.add(v)
+    while (v <= yMax + 1e-6) {
+        ticks.add(kotlin.math.round(v / step) * step)
         v += step
     }
     return ticks
