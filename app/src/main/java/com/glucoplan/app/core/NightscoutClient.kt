@@ -121,10 +121,22 @@ class NightscoutClient(
         builder.build()
     }
 
-    private val hashedSecret: String by lazy {
-        val bytes = apiSecret.toByteArray(Charsets.UTF_8)
-        val digest = java.security.MessageDigest.getInstance("SHA-1")
-        digest.digest(bytes).joinToString("") { "%02x".format(it) }
+    private val hashedSecret: String? by lazy { hashNightscoutSecret(apiSecret) }
+
+    private fun Request.Builder.nsAuth(): Request.Builder {
+        val hash = hashedSecret ?: return this
+        header("api-secret", hash)
+        header("Authorization", "Bearer $hash")
+        return this
+    }
+
+    private fun httpError(code: Int, body: String? = null): NsResult.Error = when (code) {
+        401, 403 -> NsResult.Error(
+            code,
+            "Неверный API Secret. Если график в браузере открывается без пароля — оставьте секрет пустым."
+        )
+        404 -> NsResult.Error(code, "Nightscout не найден по этому адресу")
+        else -> NsResult.Error(code, "HTTP $code${body?.let { ": ${it.take(120)}" } ?: ""}")
     }
 
     // -------------------------------------------------------------------------
@@ -132,14 +144,14 @@ class NightscoutClient(
     // -------------------------------------------------------------------------
 
     suspend fun checkConnection(): NsResult<Unit> {
-        if (baseUrl.isBlank()) return NsResult.Error(message = "Nightscout URL is empty")
+        if (baseUrl.isBlank()) return NsResult.Error(message = "Укажите URL Nightscout")
         val url = "$baseUrl/api/v1/status.json"
         Timber.d("$tag: Checking connection to $url")
 
         return try {
             val request = Request.Builder()
                 .url(url)
-                .header("api-secret", hashedSecret)
+                .nsAuth()
                 .get()
                 .build()
 
@@ -153,22 +165,14 @@ class NightscoutClient(
                     Timber.i("$tag: Connection successful")
                     NsResult.Success(Unit)
                 }
-                response.code == 401 -> {
-                    Timber.w("$tag: Authentication failed - check API secret")
-                    NsResult.Error(401, "Authentication failed - check API secret")
-                }
-                response.code == 404 -> {
-                    Timber.w("$tag: Nightscout not found at this URL")
-                    NsResult.Error(404, "Nightscout not found at this URL")
-                }
                 else -> {
                     Timber.w("$tag: Connection failed with code ${response.code}: $body")
-                    NsResult.Error(response.code, "HTTP ${response.code}: ${body?.take(200)}")
+                    httpError(response.code, body)
                 }
             }
         } catch (e: Exception) {
             Timber.e(e, "$tag: Connection exception")
-            NsResult.Error(null, "Connection failed: ${e.message}", e)
+            NsResult.Error(null, "Нет сети или сервер не отвечает: ${e.message}", e)
         }
     }
 
@@ -177,14 +181,14 @@ class NightscoutClient(
     // -------------------------------------------------------------------------
 
     suspend fun getLatestReading(): NsResult<CgmReading> {
-        if (baseUrl.isBlank()) return NsResult.Error(message = "Nightscout URL is empty")
+        if (baseUrl.isBlank()) return NsResult.Error(message = "Укажите URL Nightscout")
         val url = "$baseUrl/api/v1/entries/sgv.json?count=5"
         Timber.d("$tag: Fetching latest CGM reading from $url")
 
         return try {
             val request = Request.Builder()
                 .url(url)
-                .header("api-secret", hashedSecret)
+                .nsAuth()
                 .get()
                 .build()
 
@@ -193,7 +197,7 @@ class NightscoutClient(
             if (!response.isSuccessful) {
                 val body = response.body?.string()
                 Timber.w("$tag: Failed to get CGM data: ${response.code}")
-                return NsResult.Error(response.code, "HTTP ${response.code}: ${body?.take(200)}")
+                return httpError(response.code, body)
             }
 
             val body = response.body?.string()
@@ -256,21 +260,21 @@ class NightscoutClient(
     }
 
     suspend fun getEntries(since: Instant, count: Int = 100): NsResult<List<CgmReading>> {
-        if (baseUrl.isBlank()) return NsResult.Error(message = "Nightscout URL is empty")
+        if (baseUrl.isBlank()) return NsResult.Error(message = "Укажите URL Nightscout")
         val url = "$baseUrl/api/v1/entries/sgv.json?count=$count&find[date][\$gte]=${since.toEpochMilli()}"
         Timber.d("$tag: Fetching CGM entries since $since")
 
         return try {
             val request = Request.Builder()
                 .url(url)
-                .header("api-secret", hashedSecret)
+                .nsAuth()
                 .get()
                 .build()
 
             val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
 
             if (!response.isSuccessful) {
-                return NsResult.Error(response.code, "HTTP ${response.code}")
+                return httpError(response.code)
             }
 
             val body = response.body?.string() ?: return NsResult.Error(null, "Empty response")
@@ -309,21 +313,21 @@ class NightscoutClient(
     // -------------------------------------------------------------------------
 
     suspend fun getTreatments(since: Instant): NsResult<List<NsTreatment>> {
-        if (baseUrl.isBlank()) return NsResult.Error(message = "Nightscout URL is empty")
+        if (baseUrl.isBlank()) return NsResult.Error(message = "Укажите URL Nightscout")
         val url = "$baseUrl/api/v1/treatments.json?find[created_at][\$gte]=${DateTimeFormatter.ISO_INSTANT.format(since)}&count=100"
         Timber.d("$tag: Fetching treatments since $since")
 
         return try {
             val request = Request.Builder()
                 .url(url)
-                .header("api-secret", hashedSecret)
+                .nsAuth()
                 .get()
                 .build()
 
             val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
 
             if (!response.isSuccessful) {
-                return NsResult.Error(response.code, "HTTP ${response.code}")
+                return httpError(response.code)
             }
 
             val body = response.body?.string() ?: return NsResult.Error(null, "Empty response")
@@ -376,7 +380,8 @@ class NightscoutClient(
         fats: Double = 0.0,
         glycemicIndex: Double = 0.0
     ): NsResult<Unit> {
-        if (baseUrl.isBlank()) return NsResult.Error(message = "Nightscout URL is empty")
+        if (baseUrl.isBlank()) return NsResult.Error(message = "Укажите URL Nightscout")
+        if (hashedSecret == null) return NsResult.Error(message = "Для записи приёмов укажите API Secret")
         val url = "$baseUrl/api/v1/treatments"
         Timber.d("$tag: Posting treatment: carbs=$carbs, insulin=$insulin, glucose=$glucose, proteins=$proteins, fats=$fats, gi=$glycemicIndex")
 
@@ -425,7 +430,7 @@ class NightscoutClient(
             val body = json.toString().toRequestBody("application/json".toMediaType())
             val request = Request.Builder()
                 .url(url)
-                .header("api-secret", hashedSecret)
+                .nsAuth()
                 .header("Content-Type", "application/json")
                 .post(body)
                 .build()
@@ -452,14 +457,14 @@ class NightscoutClient(
     // -------------------------------------------------------------------------
 
     suspend fun getProfile(): NsResult<NsProfile?> {
-        if (baseUrl.isBlank()) return NsResult.Error(message = "Nightscout URL is empty")
+        if (baseUrl.isBlank()) return NsResult.Error(message = "Укажите URL Nightscout")
         val url = "$baseUrl/api/v1/profile.json"
         Timber.d("$tag: Fetching profile from $url")
 
         return try {
             val request = Request.Builder()
                 .url(url)
-                .header("api-secret", hashedSecret)
+                .nsAuth()
                 .get()
                 .build()
 
@@ -541,13 +546,13 @@ class NightscoutClient(
      * Конвертация единиц: NS хранит мг/дл, мы используем ммоль/л (÷ 18).
      */
     suspend fun loadSettingsFromProfile(current: AppSettings): NsResult<AppSettings> {
-        if (baseUrl.isBlank()) return NsResult.Error(message = "Nightscout URL is empty")
+        if (baseUrl.isBlank()) return NsResult.Error(message = "Укажите URL Nightscout")
         val url = "$baseUrl/api/v1/profile.json"
         Timber.d("$tag: Loading settings from profile")
 
         return try {
             val request = Request.Builder()
-                .url(url).header("api-secret", hashedSecret).get().build()
+                .url(url).nsAuth().get().build()
             val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
 
             if (!response.isSuccessful)
@@ -621,7 +626,8 @@ class NightscoutClient(
      * Конвертация единиц: ммоль/л → мг/дл (× 18).
      */
     suspend fun saveSettingsToProfile(settings: AppSettings): NsResult<Unit> {
-        if (baseUrl.isBlank()) return NsResult.Error(message = "Nightscout URL is empty")
+        if (baseUrl.isBlank()) return NsResult.Error(message = "Укажите URL Nightscout")
+        if (hashedSecret == null) return NsResult.Error(message = "Для записи профиля укажите API Secret")
         val url = "$baseUrl/api/v1/profile"
         Timber.d("$tag: Saving settings to NS profile")
 
@@ -672,7 +678,7 @@ class NightscoutClient(
 
             val body = payload.toString().toRequestBody("application/json".toMediaType())
             val request = Request.Builder()
-                .url(url).header("api-secret", hashedSecret)
+                .url(url).nsAuth()
                 .header("Content-Type", "application/json")
                 .post(body).build()
 
@@ -722,4 +728,17 @@ class NightscoutClient(
             }
         }
     }
+}
+
+/**
+ * SHA-1 API secret for Nightscout.
+ * Empty → no header (site may be publicly readable).
+ * 40 hex chars → already hashed, send as-is.
+ */
+internal fun hashNightscoutSecret(secret: String): String? {
+    val trimmed = secret.trim()
+    if (trimmed.isEmpty()) return null
+    if (trimmed.matches(Regex("^[0-9a-fA-F]{40}$"))) return trimmed.lowercase()
+    val digest = java.security.MessageDigest.getInstance("SHA-1")
+    return digest.digest(trimmed.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
 }
