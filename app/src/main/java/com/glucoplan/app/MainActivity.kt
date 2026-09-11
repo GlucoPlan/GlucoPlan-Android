@@ -24,14 +24,12 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import com.glucoplan.app.ui.calculator.CalculatorScreen
-import com.glucoplan.app.ui.calculator.CalculatorUiState
 import com.glucoplan.app.ui.calculator.CalculatorViewModel
 import com.glucoplan.app.ui.dishes.DishesScreen
 import com.glucoplan.app.ui.dishes.PansScreen
 import com.glucoplan.app.ui.history.HistoryScreen
 import com.glucoplan.app.ui.products.ProductsScreen
 import com.glucoplan.app.ui.settings.SettingsScreen
-import com.glucoplan.app.ui.simulator.SimulatorScreen
 import com.glucoplan.app.ui.theme.GlucoPlanTheme
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -146,8 +144,6 @@ fun MainNavHost() {
     // Shared CalculatorViewModel so history can load into it
     val calcViewModel: CalculatorViewModel = hiltViewModel()
 
-    var simState by remember { mutableStateOf<CalculatorUiState?>(null) }
-
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
@@ -189,11 +185,7 @@ fun MainNavHost() {
         ) {
             composable(Screen.Calculator.route) {
                 CalculatorScreen(
-                    viewModel = calcViewModel,
-                    onNavigateToSimulator = { state ->
-                        simState = state
-                        navController.navigate("simulator")
-                    }
+                    viewModel = calcViewModel
                 )
             }
             composable(Screen.Chart.route) {
@@ -216,12 +208,6 @@ fun MainNavHost() {
             }
             composable(Screen.Settings.route) {
                 SettingsScreen(onNavigateToPans = { navController.navigate("pans") })
-            }
-            composable("simulator") {
-                SimulatorScreen(
-                    calcState = simState,
-                    onBack = { navController.popBackStack() }
-                )
             }
             composable("pans") {
                 PansScreen(onBack = { navController.popBackStack() })

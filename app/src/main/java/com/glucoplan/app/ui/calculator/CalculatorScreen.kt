@@ -26,8 +26,7 @@ import com.glucoplan.app.ui.theme.GlucoseColor
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalculatorScreen(
-    viewModel: CalculatorViewModel = hiltViewModel(),
-    onNavigateToSimulator: (CalculatorUiState) -> Unit
+    viewModel: CalculatorViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -55,9 +54,6 @@ fun CalculatorScreen(
                         IconButton(onClick = { showClearDialog = true }) {
                             Icon(Icons.Default.DeleteSweep, "Очистить")
                         }
-                    }
-                    IconButton(onClick = { onNavigateToSimulator(state) }) {
-                        Icon(Icons.Default.ShowChart, "Симулятор")
                     }
                 }
             )
