@@ -2,7 +2,6 @@ package com.glucoplan.app.ui.history
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.glucoplan.app.data.db.MealComponentRow
 import com.glucoplan.app.data.repository.GlucoRepository
 import com.glucoplan.app.domain.model.CalcComponent
 import com.glucoplan.app.domain.model.Meal
@@ -21,6 +20,12 @@ data class HistoryUiState(
     val filterDate: LocalDate? = null
 )
 
+data class MealLineUi(
+    val name: String,
+    val servingWeight: Double,
+    val carbs: Double
+)
+
 @HiltViewModel
 class HistoryViewModel @Inject constructor(
     private val repo: GlucoRepository
@@ -29,8 +34,8 @@ class HistoryViewModel @Inject constructor(
     private val _state = MutableStateFlow(HistoryUiState())
     val state: StateFlow<HistoryUiState> = _state.asStateFlow()
 
-    private val _components = MutableStateFlow<List<MealComponentRow>>(emptyList())
-    val components: StateFlow<List<MealComponentRow>> = _components.asStateFlow()
+    private val _components = MutableStateFlow<List<MealLineUi>>(emptyList())
+    val components: StateFlow<List<MealLineUi>> = _components.asStateFlow()
 
     init { load() }
 
@@ -56,7 +61,22 @@ class HistoryViewModel @Inject constructor(
 
     fun loadComponents(mealId: Long) {
         viewModelScope.launch {
-            _components.value = repo.getMealComponents(mealId)
+            _components.value = repo.getMealComponents(mealId).map { row ->
+                val carbs = when {
+                    row.componentType == "product" ->
+                        (row.productCarbs ?: 0.0) * row.servingWeight / 100.0
+                    row.componentType == "dish" && row.dishId != null -> {
+                        val d = repo.getDishWithIngredients(row.dishId)
+                        if (d != null) d.carbsPer100g * row.servingWeight / 100.0 else 0.0
+                    }
+                    else -> 0.0
+                }
+                MealLineUi(
+                    name = row.displayName,
+                    servingWeight = row.servingWeight,
+                    carbs = carbs
+                )
+            }
         }
     }
 

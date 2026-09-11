@@ -149,7 +149,12 @@ fun DishesScreen(
                             ListItem(
                                 headlineContent = { Text(dish.dish.name, fontWeight = FontWeight.Bold) },
                                 supportingContent = {
-                                    Text("УВ: %.1f г/100г  ·  Ингредиентов: ${dish.ingredients.size}".format(dish.carbsPer100g))
+                                    Text(
+                                        "УВ: %.1f г/100г  ·  Б %.1f  Ж %.1f  ·  %d ккал/100г".format(
+                                            dish.carbsPer100g, dish.proteinsPer100g, dish.fatsPer100g,
+                                            dish.caloriesPer100g.toInt()
+                                        )
+                                    )
                                 },
                                 trailingContent = {
                                     Row {
@@ -190,17 +195,25 @@ fun DishEditScreen(
     onDismiss: () -> Unit
 ) {
     var name by remember { mutableStateOf(dish?.dish?.name ?: "") }
-    var grossWeight by remember { mutableStateOf(dish?.dish?.defaultCookedWeight?.toString() ?: "0") }
+    var grossWeight by remember { mutableStateOf(dish?.dish?.defaultCookedWeight?.toString() ?: "") }
     var selectedPanId by remember { mutableStateOf(dish?.dish?.defaultPanId) }
     var ingredients by remember { mutableStateOf(dish?.ingredients?.toMutableList() ?: mutableListOf<DishIngredient>()) }
     val pans by viewModel.pans.collectAsStateWithLifecycle()
     var showAddIngredient by remember { mutableStateOf(false) }
+    var saveError by remember { mutableStateOf<String?>(null) }
 
     val selectedPan = pans.firstOrNull { it.id == selectedPanId }
-    val netWeight = (grossWeight.toDoubleOrNull() ?: 0.0) - (selectedPan?.weight ?: 0.0)
-    val totalCarbs = ingredients.sumOf { it.carbsInPortion }
-    val totalWeight = ingredients.sumOf { it.weight }
-    val carbsPer100g = if (totalWeight > 0) totalCarbs / totalWeight * 100.0 else 0.0
+    val gross = grossWeight.replace(',', '.').toDoubleOrNull() ?: 0.0
+    val preview = DishWithIngredients(
+        dish = Dish(
+            id = dish?.dish?.id ?: 0,
+            name = name,
+            defaultPanId = selectedPanId,
+            defaultCookedWeight = gross
+        ),
+        ingredients = ingredients,
+        pan = selectedPan
+    )
 
     Scaffold(
         topBar = {
@@ -211,12 +224,23 @@ fun DishEditScreen(
                 },
                 actions = {
                     IconButton(onClick = {
-                        if (name.isBlank()) return@IconButton
+                        if (name.isBlank()) {
+                            saveError = "Укажите название"
+                            return@IconButton
+                        }
+                        if (ingredients.isEmpty()) {
+                            saveError = "Добавьте хотя бы один продукт"
+                            return@IconButton
+                        }
+                        if (preview.cookedWeightInvalid) {
+                            saveError = "Вес брутто должен быть больше веса кастрюли"
+                            return@IconButton
+                        }
                         viewModel.saveDish(
                             Dish(
                                 id = dish?.dish?.id ?: 0, name = name.trim(),
                                 defaultPanId = selectedPanId,
-                                defaultCookedWeight = grossWeight.toDoubleOrNull() ?: 0.0
+                                defaultCookedWeight = gross
                             ),
                             ingredients
                         )
@@ -249,22 +273,48 @@ fun DishEditScreen(
 
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
-                    value = grossWeight, onValueChange = { grossWeight = it },
-                    label = { Text("Вес брутто (г)") }, suffix = { Text("г") },
+                    value = grossWeight, onValueChange = { grossWeight = it; saveError = null },
+                    label = { Text("Вес готового блюда с кастрюлей (брутто)") },
+                    suffix = { Text("г") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.fillMaxWidth(), singleLine = true
+                    modifier = Modifier.fillMaxWidth(), singleLine = true,
+                    supportingText = {
+                        Text("Взвесьте кастрюлю с едой после приготовления")
+                    }
                 )
-                if (selectedPan != null && netWeight > 0) {
-                    Text("Нетто: %.0f г (брутто − %.0f г кастрюли)".format(netWeight, selectedPan.weight),
+                if (selectedPan != null && preview.edibleWeight > 0 && gross > 0) {
+                    Text(
+                        "Нетто (еда): %.0f г  =  брутто %.0f г − кастрюля %.0f г".format(
+                            preview.edibleWeight, gross, selectedPan.weight
+                        ),
                         color = MaterialTheme.colorScheme.primary, fontSize = 13.sp,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                } else if (gross <= 0) {
+                    Text(
+                        "Пока без готового веса: УВ/100 г считается по сырому составу",
+                        color = MaterialTheme.colorScheme.outline, fontSize = 13.sp,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+                saveError?.let { err ->
+                    Text(err, color = MaterialTheme.colorScheme.error, fontSize = 13.sp,
                         modifier = Modifier.padding(top = 4.dp))
                 }
                 Spacer(Modifier.height(12.dp))
                 Surface(tonalElevation = 2.dp, shape = MaterialTheme.shapes.medium) {
-                    Row(Modifier.fillMaxWidth().padding(12.dp), Arrangement.SpaceAround) {
-                        DishStat("УВ всего", "%.1f г".format(totalCarbs))
-                        DishStat("Вес состава", "%.0f г".format(totalWeight))
-                        DishStat("УВ/100г", "%.1f г".format(carbsPer100g))
+                    Column(Modifier.fillMaxWidth().padding(12.dp)) {
+                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceAround) {
+                            DishStat("УВ всего", "%.1f г".format(preview.totalCarbs))
+                            DishStat("Нетто", "%.0f г".format(preview.edibleWeight))
+                            DishStat("УВ/100г", "%.1f г".format(preview.carbsPer100g))
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        Row(Modifier.fillMaxWidth(), Arrangement.SpaceAround) {
+                            DishStat("Белки/100г", "%.1f г".format(preview.proteinsPer100g))
+                            DishStat("Жиры/100г", "%.1f г".format(preview.fatsPer100g))
+                            DishStat("Ккал/100г", "%.0f".format(preview.caloriesPer100g))
+                        }
                     }
                 }
                 Spacer(Modifier.height(12.dp))
@@ -444,7 +494,3 @@ fun AddIngredientDialog(
     )
 }
 
-private fun DishIngredient.copy(weight: Double) = DishIngredient(
-    id = id, productId = productId, productName = productName, weight = weight,
-    carbs = carbs, calories = calories, proteins = proteins, fats = fats, glycemicIndex = glycemicIndex
-)

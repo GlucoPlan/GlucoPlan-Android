@@ -267,6 +267,90 @@ class ModelsTest {
         assertThat(компонент.carbsInPortion).isEqualTo(40.0)
     }
 
+    @Test
+    fun `carbsPer100g вычитает вес кастрюли из брутто`() {
+        val блюдо = DishWithIngredients(
+            dish = Dish(name = "Суп", defaultCookedWeight = 1500.0, defaultPanId = 1),
+            ingredients = listOf(ингредиент(вес = 1000.0, углеводы = 10.0)), // 100 г углеводов
+            pan = Pan(id = 1, name = "Кастрюля", weight = 500.0)
+        )
+        // нетто 1000 г, углеводов 100 г → 10 г/100г
+        assertThat(блюдо.edibleWeight).isEqualTo(1000.0)
+        assertThat(блюдо.carbsPer100g).isEqualTo(10.0)
+    }
+
+    @Test
+    fun `carbsPer100g не делит на вес кастрюли`() {
+        val безУчётаКастрюли = 100.0 / 1500.0 * 100.0 // старая ошибочная формула ≈ 6.67
+        val блюдо = DishWithIngredients(
+            dish = Dish(name = "Рагу", defaultCookedWeight = 1500.0, defaultPanId = 1),
+            ingredients = listOf(ингредиент(вес = 800.0, углеводы = 12.5)), // 100 г углеводов
+            pan = Pan(id = 1, name = "Кастрюля", weight = 500.0)
+        )
+        assertThat(блюдо.carbsPer100g).isEqualTo(10.0)
+        assertThat(блюдо.carbsPer100g).isGreaterThan(безУчётаКастрюли)
+    }
+
+    @Test
+    fun `без готового веса углеводы считаются по сырому составу`() {
+        val блюдо = DishWithIngredients(
+            dish = Dish(name = "Салат"),
+            ingredients = listOf(ингредиент(вес = 200.0, углеводы = 5.0)) // 10 г / 200 г
+        )
+        assertThat(блюдо.edibleWeight).isEqualTo(200.0)
+        assertThat(блюдо.carbsPer100g).isEqualTo(5.0)
+    }
+
+    @Test
+    fun `брутто меньше кастрюли — вес нетто невалиден`() {
+        val блюдо = DishWithIngredients(
+            dish = Dish(name = "Ошибка", defaultCookedWeight = 400.0, defaultPanId = 1),
+            ingredients = listOf(ингредиент(вес = 100.0, углеводы = 10.0)),
+            pan = Pan(id = 1, name = "Кастрюля", weight = 500.0)
+        )
+        assertThat(блюдо.cookedWeightInvalid).isTrue()
+        assertThat(блюдо.carbsPer100g).isEqualTo(0.0)
+    }
+
+    @Test
+    fun `fromDish копирует белки и жиры на 100г`() {
+        val блюдо = DishWithIngredients(
+            dish = Dish(name = "Каша"),
+            ingredients = listOf(
+                ингредиент(вес = 100.0, углеводы = 20.0, белки = 8.0, жиры = 2.0, калории = 130.0)
+            )
+        )
+        val компонент = CalcComponent.fromDish(блюдо, 100.0)
+        assertThat(компонент.proteinsPer100g).isEqualTo(8.0)
+        assertThat(компонент.fatsPer100g).isEqualTo(2.0)
+        assertThat(компонент.caloriesPer100g).isEqualTo(130.0)
+        assertThat(компонент.proteinsInPortion).isEqualTo(8.0)
+    }
+
+    @Test
+    fun `ГИ блюда взвешен по углеводам ингредиентов`() {
+        val блюдо = DishWithIngredients(
+            dish = Dish(name = "Микс"),
+            ingredients = listOf(
+                ингредиент(вес = 100.0, углеводы = 10.0, ги = 80.0), // 10 г УВ
+                ингредиент(вес = 100.0, углеводы = 30.0, ги = 40.0)  // 30 г УВ
+            )
+        )
+        // (80*10 + 40*30) / 40 = 50
+        assertThat(блюдо.glycemicIndex).isEqualTo(50.0)
+    }
+
+    @Test
+    fun `калории на 100г тоже считаются от нетто а не от сырого веса`() {
+        val блюдо = DishWithIngredients(
+            dish = Dish(name = "Суп", defaultCookedWeight = 1200.0, defaultPanId = 1),
+            ingredients = listOf(ингредиент(вес = 500.0, калории = 80.0, углеводы = 10.0)), // 400 ккал
+            pan = Pan(id = 1, name = "Кастрюля", weight = 200.0)
+        )
+        // нетто 1000 г, 400 ккал → 40 ккал/100г
+        assertThat(блюдо.caloriesPer100g).isEqualTo(40.0)
+    }
+
     // ─── AppSettings значения по умолчанию ───────────────────────────────────────
 
     @Test

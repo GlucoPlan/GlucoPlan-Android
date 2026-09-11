@@ -63,6 +63,8 @@ data class DishIngredient(
 ) {
     val carbsInPortion: Double get() = carbs * weight / 100.0
     val caloriesInPortion: Double get() = calories * weight / 100.0
+    val proteinsInPortion: Double get() = proteins * weight / 100.0
+    val fatsInPortion: Double get() = fats * weight / 100.0
 }
 
 data class DishWithIngredients(
@@ -71,18 +73,42 @@ data class DishWithIngredients(
     val pan: Pan? = null
 ) {
     val totalCarbs: Double get() = ingredients.sumOf { it.carbsInPortion }
+    val totalCalories: Double get() = ingredients.sumOf { it.caloriesInPortion }
+    val totalProteins: Double get() = ingredients.sumOf { it.proteinsInPortion }
+    val totalFats: Double get() = ingredients.sumOf { it.fatsInPortion }
+
+    /** Сумма весов сырых ингредиентов (не готовое блюдо). */
     val totalWeight: Double get() = ingredients.sumOf { it.weight }
-    val carbsPer100g: Double
+
+    /**
+     * Вес готовой еды без посуды.
+     * Если указан вес брутто — вычитаем кастрюлю.
+     * Если готовый вес не указан — считаем по сырому составу.
+     */
+    val edibleWeight: Double
         get() {
-            val totalCarbs = ingredients.sumOf { it.carbsInPortion }
-            val totalWeight = if (dish.defaultCookedWeight > 0.0) dish.defaultCookedWeight
-            else ingredients.sumOf { it.weight }
-            return if (totalWeight > 0) totalCarbs / totalWeight * 100.0 else 0.0
+            val gross = dish.defaultCookedWeight
+            if (gross <= 0.0) return totalWeight
+            val net = gross - (pan?.weight ?: 0.0)
+            return if (net > 0.0) net else 0.0
         }
-    val caloriesPer100g: Double get() {
-        val totalCal = ingredients.sumOf { it.caloriesInPortion }
-        return if (totalWeight > 0) totalCal / totalWeight * 100.0 else 0.0
-    }
+
+    val cookedWeightInvalid: Boolean
+        get() = dish.defaultCookedWeight > 0.0 && edibleWeight <= 0.0
+
+    private fun per100g(amount: Double): Double =
+        if (edibleWeight > 0.0) amount / edibleWeight * 100.0 else 0.0
+
+    val carbsPer100g: Double get() = per100g(totalCarbs)
+    val caloriesPer100g: Double get() = per100g(totalCalories)
+    val proteinsPer100g: Double get() = per100g(totalProteins)
+    val fatsPer100g: Double get() = per100g(totalFats)
+
+    /** ГИ блюда, взвешенный по углеводам ингредиентов. */
+    val glycemicIndex: Double
+        get() = if (totalCarbs > 0.0)
+            ingredients.sumOf { it.glycemicIndex * it.carbsInPortion } / totalCarbs
+        else 0.0
 }
 
 // ─── Meal ────────────────────────────────────────────────────────────────────
@@ -191,8 +217,8 @@ data class CalcComponent(
         fun fromDish(d: DishWithIngredients, weight: Double) = CalcComponent(
             type = ComponentType.DISH, sourceId = d.dish.id, name = d.dish.name,
             servingWeight = weight, carbsPer100g = d.carbsPer100g,
-            caloriesPer100g = d.caloriesPer100g, proteinsPer100g = 0.0,
-            fatsPer100g = 0.0, glycemicIndex = 50.0
+            caloriesPer100g = d.caloriesPer100g, proteinsPer100g = d.proteinsPer100g,
+            fatsPer100g = d.fatsPer100g, glycemicIndex = d.glycemicIndex
         )
     }
 }

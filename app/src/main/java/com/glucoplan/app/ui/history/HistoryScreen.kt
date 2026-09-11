@@ -343,8 +343,8 @@ private fun MealDetailSheet(meal: Meal, viewModel: HistoryViewModel, onDismiss: 
             LazyColumn(contentPadding = PaddingValues(bottom = 32.dp)) {
                 items(components) { row ->
                     ListItem(
-                        headlineContent = { Text(row.displayName) },
-                        supportingContent = { Text("УВ: %.1f г".format(row.carbsInPortion)) },
+                        headlineContent = { Text(row.name) },
+                        supportingContent = { Text("УВ: %.1f г".format(row.carbs)) },
                         trailingContent = { Text("%.0f г".format(row.servingWeight)) }
                     )
                 }
